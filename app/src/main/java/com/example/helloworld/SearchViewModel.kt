@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.helloworld.data.UserPreferencesRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,11 +28,15 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private var searchJob: Job? = null
+
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+        searchJob?.cancel()
         if (query.isNotBlank()) {
             _isLoading.value = true
-            viewModelScope.launch {
+            searchJob = viewModelScope.launch {
+                delay(300L) // Debounce for 300 milliseconds
                 try {
                     val useDeviceLocation = userPreferencesRepository.useDeviceLocation.first()
                     var lat = 0.0

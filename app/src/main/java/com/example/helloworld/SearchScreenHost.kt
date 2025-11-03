@@ -43,7 +43,7 @@ fun SearchScreenHost(
         requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    if (query.isNotBlank() && searchQuery != query) {
+    LaunchedEffect(query) {
         searchViewModel.onSearchQueryChange(query)
     }
 
