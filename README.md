@@ -4,9 +4,9 @@
 
 ## Screenshots
 
-| Landing Screen | Search Results | POI Details Screen | Settings Screen |
-|---|---|---|---|
-| ![Landing Screen](screenshots/landing_screen.png) | ![Search Results](screenshots/search_results.png) | ![POI Details Screen](screenshots/poi_details_screen.png) | ![Settings Screen](screenshots/settings_screen.png) |
+| Landing Screen | Search Results | POI Details Screen | Settings Screen                                     |
+|---|---|---|-----------------------------------------------------|
+| ![Landing Screen](screenshots/landing_screen.png) | ![Search Results](screenshots/search_results.png) | ![POI Details Screen](screenshots/poi_details_screen.png) | ![Settings Screen](screenshots/settings_screen.jpg) |
 
 ## Table of Contents
 
