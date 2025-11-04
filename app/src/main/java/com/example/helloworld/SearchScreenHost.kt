@@ -68,14 +68,14 @@ fun SearchScreenHost(
                     .encode(addressString, StandardCharsets.UTF_8.toString())
                     .replace("/", "%2F")
                 val encodedPhone = URLEncoder
-                    .encode(poi.phone ?: "N/A", StandardCharsets.UTF_8.toString())
+                    .encode(poi.phone ?: "NA", StandardCharsets.UTF_8.toString())
                     .replace("/", "%2F")
                 val encodedDescription = URLEncoder
-                    .encode(poi.description ?: "N/A", StandardCharsets.UTF_8.toString())
+                    .encode(poi.description ?: "NA", StandardCharsets.UTF_8.toString())
                     .replace("/", "%2F")
                 val encodedHours = URLEncoder
                     .encode(
-                        if (poi.hours.isEmpty()) "N/A" else poi.hours.joinToString(","),
+                        if (poi.hours.isEmpty()) "NA" else poi.hours.joinToString(","),
                         StandardCharsets.UTF_8.toString()
                     )
                     .replace("/", "%2F")
@@ -85,6 +85,10 @@ fun SearchScreenHost(
                     val encodedWebsite =
                         URLEncoder.encode(poi.website, StandardCharsets.UTF_8.toString())
                     route += "?poiWebsite=$encodedWebsite"
+                }
+                if (poi.lat != null && poi.lng != null) {
+                    route += if (poi.website != null) "&" else "?"
+                    route += "lat=${poi.lat}&lng=${poi.lng}"
                 }
                 navController.navigate(route)
             }

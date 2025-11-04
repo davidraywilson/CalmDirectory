@@ -6,7 +6,9 @@ data class Poi(
     val hours: List<String>,
     val phone: String?,
     val description: String,
-    val website: String?
+    val website: String?,
+    val lat: Double?,
+    val lng: Double?
 )
 
 data class Address(

@@ -45,7 +45,8 @@ class GooglePlacesApiService(
             Place.Field.PHONE_NUMBER,
             Place.Field.OPENING_HOURS,
             Place.Field.TYPES,
-            Place.Field.WEBSITE_URI
+            Place.Field.WEBSITE_URI,
+            Place.Field.LAT_LNG
         )
 
         val requestBuilder = SearchByTextRequest.builder(query, placeFields)
@@ -72,7 +73,9 @@ class GooglePlacesApiService(
                     hours = place.openingHours?.weekdayText ?: emptyList(),
                     phone = place.phoneNumber?.let { formatPhoneNumber(it) } ?: "N/A",
                     description = place.placeTypes?.joinToString(", ") ?: "N/A",
-                    website = place.websiteUri?.toString()
+                    website = place.websiteUri?.toString(),
+                    lat = place.latLng?.latitude,
+                    lng = place.latLng?.longitude
                 )
             }
         } catch (e: Exception) {

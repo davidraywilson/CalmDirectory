@@ -30,6 +30,11 @@ class UserPreferencesRepository(
             preferences[DEFAULT_LOCATION]
         }
 
+    val mapApp: Flow<MapApp> = context.dataStore.data
+        .map { preferences ->
+            MapApp.valueOf(preferences[MAP_APP] ?: MapApp.DEFAULT.name)
+        }
+
     suspend fun saveApiKey(apiKey: String) {
         context.dataStore.edit { settings ->
             settings[API_KEY] = apiKey
@@ -48,9 +53,16 @@ class UserPreferencesRepository(
         }
     }
 
+    suspend fun saveMapApp(mapApp: MapApp) {
+        context.dataStore.edit { settings ->
+            settings[MAP_APP] = mapApp.name
+        }
+    }
+
     private companion object {
         val API_KEY = stringPreferencesKey("api_key")
         val USE_DEVICE_LOCATION = booleanPreferencesKey("use_device_location")
         val DEFAULT_LOCATION = stringPreferencesKey("default_location")
+        val MAP_APP = stringPreferencesKey("map_app")
     }
 }

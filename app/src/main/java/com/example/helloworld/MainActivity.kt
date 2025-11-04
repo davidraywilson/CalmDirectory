@@ -1,8 +1,13 @@
 package com.example.helloworld
 
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -47,6 +52,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.helloworld.data.MapApp
+import com.example.helloworld.data.UserPreferencesRepository
 import com.example.helloworld.ui.theme.CalmDirectoryTheme
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.search_bar.SearchBarDefaultsMMD
@@ -116,11 +123,19 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable(
-                            "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}",
-                            arguments = listOf(navArgument("poiWebsite") {
-                                type = NavType.StringType
-                                nullable = true
-                            })
+                            "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}&lat={lat}&lng={lng}",
+                            arguments = listOf(
+                                navArgument("poiWebsite") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                },
+                                navArgument("lat") {
+                                    type = NavType.FloatType
+                                },
+                                navArgument("lng") {
+                                    type = NavType.FloatType
+                                }
+                            )
                         ) { backStackEntry ->
                             val poiName = URLDecoder.decode(
                                 backStackEntry.arguments?.getString("poiName")?.replace("%2F", "/"),
@@ -177,6 +192,8 @@ fun DirectoryTopAppBar(
 ) {
     val context = LocalContext.current
     val searchQuery by searchViewModel.searchQuery.collectAsState()
+    val userPreferencesRepository = remember { UserPreferencesRepository(context) }
+    val mapApp by userPreferencesRepository.mapApp.collectAsState(initial = MapApp.DEFAULT)
 
     Column {
         TopAppBarMMD(
@@ -205,7 +222,7 @@ fun DirectoryTopAppBar(
                             modifier = Modifier.focusRequester(focusRequester)
                         )
                     }
-                    "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}" -> {
+                    "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}&lat={lat}&lng={lng}" -> {
                         val poiName = navBackStackEntry.arguments?.getString("poiName")
                         Text(
                             text = URLDecoder.decode(poiName, StandardCharsets.UTF_8.toString()),
@@ -218,7 +235,7 @@ fun DirectoryTopAppBar(
             navigationIcon = {
                 when (navBackStackEntry?.destination?.route) {
                     "settings", "search?query={query}&autoFocus={autoFocus}",
-                    "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}" -> {
+                    "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}&lat={lat}&lng={lng}" -> {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
@@ -238,10 +255,12 @@ fun DirectoryTopAppBar(
                         }
                     }
 
-                    "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}" -> {
+                    "details/{poiName}/{poiAddress}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}&lat={lat}&lng={lng}" -> {
                         val poiWebsite = navBackStackEntry.arguments?.getString("poiWebsite")
                         val poiAddress = navBackStackEntry.arguments?.getString("poiAddress")
                         val poiPhone = navBackStackEntry.arguments?.getString("poiPhone")
+                        val lat = navBackStackEntry.arguments?.getFloat("lat")
+                        val lng = navBackStackEntry.arguments?.getFloat("lng")
                         if (poiWebsite != null) {
                             IconButton(onClick = {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(poiWebsite))
@@ -255,11 +274,51 @@ fun DirectoryTopAppBar(
                             }
                         }
                         IconButton(onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("geo:0,0?q=$poiAddress")
+                            val decodedAddress = URLDecoder.decode(
+                                poiAddress,
+                                StandardCharsets.UTF_8.toString()
                             )
-                            context.startActivity(intent)
+                            val clipboard =
+                                context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("address", decodedAddress)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Address copied to clipboard", Toast.LENGTH_SHORT)
+                                .show()
+
+                            val (uri, packageName, webUri) = when (mapApp) {
+                                MapApp.GOOGLE_MAPS -> Triple(
+                                    "google.navigation:q=$lat,$lng",
+                                    "com.google.android.apps.maps",
+                                    "https://maps.google.com/maps?q=$decodedAddress"
+                                )
+                                MapApp.TOMTOM -> Triple(
+                                    "geo:0,0?q=$lat,$lng($decodedAddress)",
+                                    "com.tomtom.gplay.navapp",
+                                    "https://mydrive.tomtom.com/en_gb/#mode=search&search=$decodedAddress"
+                                )
+                                MapApp.HERE_WEGO -> Triple(
+                                    "geo:0,0?q=$lat,$lng($decodedAddress)",
+                                    "com.here.app.maps",
+                                    "https://wego.here.com/search/$decodedAddress"
+                                )
+                                else -> Triple(
+                                    "geo:$lat,$lng?q=$decodedAddress",
+                                    null,
+                                    "https://maps.google.com/maps?q=$decodedAddress"
+                                )
+                            }
+
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+                            if (packageName != null) {
+                                intent.setPackage(packageName)
+                            }
+
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: ActivityNotFoundException) {
+                                val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(webUri))
+                                context.startActivity(webIntent)
+                            }
                         }) {
                             Icon(
                                 Icons.Outlined.Map,
