@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -35,6 +36,11 @@ class UserPreferencesRepository(
             MapApp.valueOf(preferences[MAP_APP] ?: MapApp.DEFAULT.name)
         }
 
+    val searchRadius: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[SEARCH_RADIUS] ?: 10 // default 10 miles
+        }
+
     suspend fun saveApiKey(apiKey: String) {
         context.dataStore.edit { settings ->
             settings[API_KEY] = apiKey
@@ -59,10 +65,19 @@ class UserPreferencesRepository(
         }
     }
 
+    suspend fun saveSearchRadius(radius: Int) {
+        context.dataStore.edit { settings ->
+            settings[SEARCH_RADIUS] = radius
+        }
+    }
+
+
     private companion object {
         val API_KEY = stringPreferencesKey("api_key")
         val USE_DEVICE_LOCATION = booleanPreferencesKey("use_device_location")
         val DEFAULT_LOCATION = stringPreferencesKey("default_location")
         val MAP_APP = stringPreferencesKey("map_app")
+        val SEARCH_RADIUS = intPreferencesKey("search_radius") // in miles
+
     }
 }

@@ -166,6 +166,8 @@ class MainActivity : ComponentActivity() {
                                 if (poiHoursString == "N/A") emptyList() else poiHoursString.split(
                                     ","
                                 )
+                            val poiLat: Double? = backStackEntry.arguments?.getFloat("lat")?.toDouble()
+                            val poiLng: Double? = backStackEntry.arguments?.getFloat("lng")?.toDouble()
                             val poiWebsite = backStackEntry.arguments?.getString("poiWebsite")
                             PoiDetailsScreen(
                                 poiName = poiName,
@@ -174,6 +176,8 @@ class MainActivity : ComponentActivity() {
                                 poiDescription = poiDescription,
                                 poiHours = poiHours,
                                 poiWebsite = poiWebsite,
+                                poiLat = poiLat,
+                                poiLng = poiLng,
                                 navController = navController
                             )
                         }

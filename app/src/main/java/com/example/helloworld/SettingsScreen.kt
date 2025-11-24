@@ -36,6 +36,7 @@ import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
 import com.mudita.mmd.components.switcher.SwitchMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
+import com.mudita.mmd.components.slider.SliderMMD
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +66,10 @@ fun SettingsScreen(
     val mapApp by userPreferencesRepository.mapApp.collectAsState(initial = MapApp.DEFAULT)
     var openBottomSheet by rememberSaveable { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetMMDState()
+
+    val searchRadius by userPreferencesRepository.searchRadius.collectAsState(initial = 10)
+    var sliderValue by remember(searchRadius) { mutableStateOf(searchRadius.toFloat()) }
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
 
     fun maskApiKey(key: String): String {
         if (key.length <= 4) {
@@ -113,6 +118,7 @@ fun SettingsScreen(
         }
     }
 
+
     Column(modifier = Modifier.padding(16.dp)) {
         if (isEditing) {
             TextFieldMMD(
@@ -151,6 +157,35 @@ fun SettingsScreen(
         }
 
         Spacer(modifier = Modifier.padding(16.dp))
+
+
+
+        HorizontalDividerMMD(
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+        Spacer(modifier = Modifier.padding(8.dp))
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Search Radius: ${sliderValue.toInt()} miles")
+
+            SliderMMD(
+                value = sliderValue,
+                onValueChange = { sliderValue = it },
+                onValueChangeFinished = {
+                    coroutineScope.launch {
+                        userPreferencesRepository.saveSearchRadius(sliderValue.toInt())
+                        snackbarHostState.showSnackbar("Search radius updated")
+                    }
+                },
+                valueRange = 1f..20f,
+                steps = 18, // 1-mile increments (20 - 1 - 1)
+                interactionSource = interactionSource,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            )
+        }
+
         HorizontalDividerMMD(
             thickness = 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant
@@ -168,6 +203,7 @@ fun SettingsScreen(
                 onCheckedChange = { viewModel.setUseDeviceLocation(it) }
             )
         }
+
 
         Spacer(modifier = Modifier.padding(8.dp))
 
@@ -238,6 +274,8 @@ fun SettingsScreen(
                 fontSize = 14.sp,
             )
         }
+
+
 
         // THIS MIGHT NOT BE NECESSARY RIGHT NOW BUT LEAVING //
 
