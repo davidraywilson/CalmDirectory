@@ -21,11 +21,6 @@ class UserPreferencesRepository(
             preferences[API_KEY]
         }
 
-    val geoapifyApiKey: Flow<String?> = context.dataStore.data
-        .map { preferences ->
-            preferences[GEOAPIFY_API_KEY]
-        }
-
     val useDeviceLocation: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[USE_DEVICE_LOCATION] ?: true
@@ -43,7 +38,8 @@ class UserPreferencesRepository(
 
     val searchProvider: Flow<SearchProvider> = context.dataStore.data
         .map { preferences ->
-            SearchProvider.valueOf(preferences[SEARCH_PROVIDER] ?: SearchProvider.GOOGLE_PLACES.name)
+            // Default to GEOAPIFY so the app works out of the box with the built-in key.
+            SearchProvider.valueOf(preferences[SEARCH_PROVIDER] ?: SearchProvider.GEOAPIFY.name)
         }
 
     val searchRadius: Flow<Int> = context.dataStore.data
@@ -54,12 +50,6 @@ class UserPreferencesRepository(
     suspend fun saveGoogleApiKey(apiKey: String) {
         context.dataStore.edit { settings ->
             settings[API_KEY] = apiKey
-        }
-    }
-
-    suspend fun saveGeoapifyApiKey(apiKey: String) {
-        context.dataStore.edit { settings ->
-            settings[GEOAPIFY_API_KEY] = apiKey
         }
     }
 
@@ -95,7 +85,6 @@ class UserPreferencesRepository(
 
     private companion object {
         val API_KEY = stringPreferencesKey("api_key")
-        val GEOAPIFY_API_KEY = stringPreferencesKey("geoapify_api_key")
         val USE_DEVICE_LOCATION = booleanPreferencesKey("use_device_location")
         val DEFAULT_LOCATION = stringPreferencesKey("default_location")
         val MAP_APP = stringPreferencesKey("map_app")

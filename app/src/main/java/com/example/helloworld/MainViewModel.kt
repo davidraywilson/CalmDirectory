@@ -24,12 +24,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Expose the key required for the currently selected backend
     private val apiKeyFlow: Flow<String?> = combine(
         userPreferencesRepository.searchProvider,
-        userPreferencesRepository.googleApiKey,
-        userPreferencesRepository.geoapifyApiKey
-    ) { provider, googleKey, geoapifyKey ->
+        userPreferencesRepository.googleApiKey
+    ) { provider, googleKey ->
         when (provider) {
             SearchProvider.GOOGLE_PLACES -> googleKey
-            SearchProvider.GEOAPIFY -> geoapifyKey
+            // Geoapify key is provided via BuildConfig from local.properties
+            SearchProvider.GEOAPIFY -> BuildConfig.GEOAPIFY_API_KEY
         }
     }
 

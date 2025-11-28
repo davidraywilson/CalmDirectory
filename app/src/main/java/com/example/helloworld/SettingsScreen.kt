@@ -1,9 +1,11 @@
 package com.example.helloworld
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -34,6 +36,7 @@ import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
 import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
+import com.mudita.mmd.components.lazy.LazyColumnMMD
 import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
 import com.mudita.mmd.components.switcher.SwitchMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
@@ -51,12 +54,9 @@ fun SettingsScreen(
     val userPreferencesRepository = remember { UserPreferencesRepository(context) }
     val googleApiKey by userPreferencesRepository.googleApiKey.collectAsState(initial = "")
     var newGoogleApiKey by remember(googleApiKey) { mutableStateOf(googleApiKey ?: "") }
-    val geoapifyApiKey by userPreferencesRepository.geoapifyApiKey.collectAsState(initial = "")
-    var newGeoapifyApiKey by remember(geoapifyApiKey) { mutableStateOf(geoapifyApiKey ?: "") }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostStateMMD() }
     var isEditingGoogleKey by remember(googleApiKey) { mutableStateOf(googleApiKey.isNullOrEmpty()) }
-    var isEditingGeoapifyKey by remember(geoapifyApiKey) { mutableStateOf(geoapifyApiKey.isNullOrEmpty()) }
     val currentLocation by viewModel.currentLocation.collectAsState()
     val useDeviceLocation by viewModel.useDeviceLocation.collectAsState(initial = true)
     val defaultLocation by viewModel.defaultLocation.collectAsState(initial = "")
@@ -68,7 +68,7 @@ fun SettingsScreen(
     }
     val locationSuggestions by viewModel.locationSuggestions.collectAsState()
     val mapApp by userPreferencesRepository.mapApp.collectAsState(initial = MapApp.DEFAULT)
-    val searchProvider by userPreferencesRepository.searchProvider.collectAsState(initial = SearchProvider.GOOGLE_PLACES)
+    val searchProvider by userPreferencesRepository.searchProvider.collectAsState(initial = SearchProvider.GEOAPIFY)
     var openBottomSheet by rememberSaveable { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetMMDState()
 
@@ -123,272 +123,260 @@ fun SettingsScreen(
         }
     }
 
+    LazyColumnMMD(modifier = Modifier.fillMaxSize().padding(vertical = 16.dp)) {
+        item {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Text(text = "Data Provider", fontSize = 16.sp)
+                Spacer(modifier = Modifier.padding(4.dp))
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        // Google Places API key section
-        Text(
-            text = "Google Places API Key:",
-            fontSize = 16.sp,
-        )
-        Spacer(modifier = Modifier.padding(4.dp))
-
-        if (isEditingGoogleKey) {
-            TextFieldMMD(
-                value = newGoogleApiKey,
-                onValueChange = { newGoogleApiKey = it },
-                label = { Text("Google Places API Key") }
-            )
-
-            Spacer(modifier = Modifier.padding(8.dp))
-
-            ButtonMMD(onClick = {
-                coroutineScope.launch {
-                    userPreferencesRepository.saveGoogleApiKey(newGoogleApiKey.trim())
-                    snackbarHostState.showSnackbar("Google Places API Key saved successfully")
-                    isEditingGoogleKey = false
-                }
-            }) {
-                Text("Save")
-            }
-        } else {
-            Text(
-                text = maskApiKey(googleApiKey ?: ""),
-                fontSize = 14.sp,
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-
-            ButtonMMD(onClick = { isEditingGoogleKey = true }) {
-                Text("Edit")
-            }
-        }
-
-        Spacer(modifier = Modifier.padding(16.dp))
-
-        // Geoapify API key section
-        Text(
-            text = "Geoapify API Key:",
-            fontSize = 16.sp,
-        )
-        Spacer(modifier = Modifier.padding(4.dp))
-
-        if (isEditingGeoapifyKey) {
-            TextFieldMMD(
-                value = newGeoapifyApiKey,
-                onValueChange = { newGeoapifyApiKey = it },
-                label = { Text("Geoapify API Key") }
-            )
-
-            Spacer(modifier = Modifier.padding(8.dp))
-
-            ButtonMMD(onClick = {
-                coroutineScope.launch {
-                    userPreferencesRepository.saveGeoapifyApiKey(newGeoapifyApiKey.trim())
-                    snackbarHostState.showSnackbar("Geoapify API Key saved successfully")
-                    isEditingGeoapifyKey = false
-                }
-            }) {
-                Text("Save")
-            }
-        } else {
-            Text(
-                text = if (geoapifyApiKey.isNullOrEmpty()) "Not set" else maskApiKey(geoapifyApiKey ?: ""),
-                fontSize = 14.sp,
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-
-            ButtonMMD(onClick = { isEditingGeoapifyKey = true }) {
-                Text("Edit")
-            }
-        }
-
-        Spacer(modifier = Modifier.padding(16.dp))
-
-
-
-        HorizontalDividerMMD(
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
-        Spacer(modifier = Modifier.padding(8.dp))
-
-        // Search backend selection
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Search backend", fontSize = 16.sp)
-            Spacer(modifier = Modifier.padding(4.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
-                RadioButton(
-                    selected = searchProvider == SearchProvider.GOOGLE_PLACES,
-                    onClick = {
-                        coroutineScope.launch {
-                            userPreferencesRepository.saveSearchProvider(SearchProvider.GOOGLE_PLACES)
-                            snackbarHostState.showSnackbar("Using Google Places backend")
-                        }
-                    }
-                )
-                Text(text = "Google Places", modifier = Modifier.padding(start = 8.dp))
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
-                RadioButton(
-                    selected = searchProvider == SearchProvider.GEOAPIFY,
-                    onClick = {
-                        coroutineScope.launch {
-                            userPreferencesRepository.saveSearchProvider(SearchProvider.GEOAPIFY)
-                            snackbarHostState.showSnackbar("Using Geoapify backend")
-                        }
-                    }
-                )
-                Text(text = "Geoapify", modifier = Modifier.padding(start = 8.dp))
-            }
-        }
-
-        Spacer(modifier = Modifier.padding(16.dp))
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Search Radius: ${sliderValue.toInt()} miles")
-
-            SliderMMD(
-                value = sliderValue,
-                onValueChange = { sliderValue = it },
-                onValueChangeFinished = {
-                    coroutineScope.launch {
-                        userPreferencesRepository.saveSearchRadius(sliderValue.toInt())
-                        snackbarHostState.showSnackbar("Search radius updated")
-                    }
-                },
-                valueRange = 1f..20f,
-                steps = 18, // 1-mile increments (20 - 1 - 1)
-                interactionSource = interactionSource,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-        }
-
-        HorizontalDividerMMD(
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
-        Spacer(modifier = Modifier.padding(16.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Use device location",
-                fontSize = 16.sp,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            SwitchMMD(
-                checked = useDeviceLocation,
-                onCheckedChange = { viewModel.setUseDeviceLocation(it) }
-            )
-        }
-
-
-        Spacer(modifier = Modifier.padding(8.dp))
-
-        if (!useDeviceLocation) {
-            if (isEditingLocation) {
-                TextFieldMMD(
-                    value = newDefaultLocation,
-                    onValueChange = {
-                        newDefaultLocation = it
-                        viewModel.onDefaultLocationChange(it)
-                    },
-                    label = { Text("Default Location") }
-                )
-                locationSuggestions.forEach { suggestion ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable {
-                                newDefaultLocation = suggestion
-                                viewModel.onDefaultLocationChange("")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    RadioButton(
+                        selected = searchProvider == SearchProvider.GOOGLE_PLACES,
+                        onClick = {
+                            coroutineScope.launch {
+                                userPreferencesRepository.saveSearchProvider(SearchProvider.GOOGLE_PLACES)
+                                snackbarHostState.showSnackbar("Using Google Places backend")
                             }
-                    ) {
-                        Text(
-                            text = suggestion,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
+                        }
+                    )
+                    Text(text = "Google Places", modifier = Modifier.padding(start = 8.dp))
                 }
 
-                Spacer(modifier = Modifier.padding(8.dp))
-
-                ButtonMMD(onClick = {
-                    viewModel.setDefaultLocation(newDefaultLocation)
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Default location saved")
-                    }
-                    isEditingLocation = false
-                }) {
-                    Text("Save")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    RadioButton(
+                        selected = searchProvider == SearchProvider.GEOAPIFY,
+                        onClick = {
+                            coroutineScope.launch {
+                                userPreferencesRepository.saveSearchProvider(SearchProvider.GEOAPIFY)
+                                snackbarHostState.showSnackbar("Using Geoapify backend")
+                            }
+                        }
+                    )
+                    Text(text = "Geoapify", modifier = Modifier.padding(start = 8.dp))
                 }
-            } else {
+
+                Spacer(modifier = Modifier.padding(16.dp))
+
                 Text(
-                    text = "Default Location:",
+                    text = "Google Places API Key:",
                     fontSize = 16.sp,
                 )
                 Spacer(modifier = Modifier.padding(4.dp))
 
-                Text(
-                    text = defaultLocation ?: "",
-                    fontSize = 14.sp,
-                )
-                Spacer(modifier = Modifier.padding(8.dp))
+                if (isEditingGoogleKey) {
+                    TextFieldMMD(
+                        value = newGoogleApiKey,
+                        onValueChange = { newGoogleApiKey = it },
+                        label = { Text("Google Places API Key") }
+                    )
 
-                ButtonMMD(onClick = { isEditingLocation = true }) {
-                    Text("Edit")
+                    Spacer(modifier = Modifier.padding(8.dp))
+
+                    ButtonMMD(onClick = {
+                        coroutineScope.launch {
+                            userPreferencesRepository.saveGoogleApiKey(newGoogleApiKey.trim())
+                            snackbarHostState.showSnackbar("Google Places API Key saved successfully")
+                            isEditingGoogleKey = false
+                        }
+                    }) {
+                        Text("Save")
+                    }
+                } else {
+                    Text(
+                        text = maskApiKey(googleApiKey ?: ""),
+                        fontSize = 14.sp,
+                    )
+                    Spacer(modifier = Modifier.padding(8.dp))
+
+                    ButtonMMD(onClick = { isEditingGoogleKey = true }) {
+                        Text("Edit")
+                    }
+                }
+
+                Spacer(modifier = Modifier.padding(16.dp))
+
+                HorizontalDividerMMD(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.padding(16.dp))
+        }
+
+        item {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Text(text = "Search Radius: ${sliderValue.toInt()} miles")
+
+                SliderMMD(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    onValueChangeFinished = {
+                        coroutineScope.launch {
+                            userPreferencesRepository.saveSearchRadius(sliderValue.toInt())
+                            snackbarHostState.showSnackbar("Search radius updated")
+                        }
+                    },
+                    valueRange = 1f..20f,
+                    steps = 18, // 1-mile increments (20 - 1 - 1)
+                    interactionSource = interactionSource,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                )
+            }
+        }
+
+        item {
+            HorizontalDividerMMD(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.padding(16.dp))
+        }
+
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    text = "Use device location",
+                    fontSize = 16.sp,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                SwitchMMD(
+                    checked = useDeviceLocation,
+                    onCheckedChange = { viewModel.setUseDeviceLocation(it) }
+                )
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.padding(8.dp))
+        }
+
+        if (!useDeviceLocation) {
+            item {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+
+                    if (isEditingLocation) {
+                        TextFieldMMD(
+                            value = newDefaultLocation,
+                            onValueChange = {
+                                newDefaultLocation = it
+                                viewModel.onDefaultLocationChange(it)
+                            },
+                            label = { Text("Default Location") }
+                        )
+                        locationSuggestions.forEach { suggestion ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable {
+                                        newDefaultLocation = suggestion
+                                        viewModel.onDefaultLocationChange("")
+                                    }
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.padding(8.dp))
+
+                        ButtonMMD(onClick = {
+                            viewModel.setDefaultLocation(newDefaultLocation)
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Default location saved")
+                            }
+                            isEditingLocation = false
+                        }) {
+                            Text("Save")
+                        }
+                    } else {
+                        Text(
+                            text = "Default Location:",
+                            fontSize = 16.sp,
+                        )
+                        Spacer(modifier = Modifier.padding(4.dp))
+
+                        Text(
+                            text = defaultLocation ?: "",
+                            fontSize = 14.sp,
+                        )
+                        Spacer(modifier = Modifier.padding(8.dp))
+
+                        ButtonMMD(onClick = { isEditingLocation = true }) {
+                            Text("Edit")
+                        }
+                    }
                 }
             }
-            Spacer(modifier = Modifier.padding(16.dp))
+            item {
+                Spacer(modifier = Modifier.padding(16.dp))
+            }
         } else {
-            Text(
-                text = "Current Location:",
-                fontSize = 16.sp,
-            )
-            Spacer(modifier = Modifier.padding(4.dp))
-            Text(
-                text = currentLocation,
-                fontSize = 14.sp,
-            )
+            item {
+                Text(
+                    text = "Current Location:",
+                    fontSize = 16.sp,
+                )
+            }
+            item {
+                Spacer(modifier = Modifier.padding(4.dp))
+            }
+            item {
+                Text(
+                    text = currentLocation,
+                    fontSize = 14.sp,
+                )
+            }
         }
 
 
 
         // THIS MIGHT NOT BE NECESSARY RIGHT NOW BUT LEAVING //
 
-//        Spacer(modifier = Modifier.padding(16.dp))
-//        HorizontalDividerMMD(
-//            thickness = 1.dp,
-//            color = MaterialTheme.colorScheme.outlineVariant
-//        )
-//        Spacer(modifier = Modifier.padding(16.dp))
+//        item { Spacer(modifier = Modifier.padding(16.dp)) }
+//        item {
+//            HorizontalDividerMMD(
+//                thickness = 1.dp,
+//                color = MaterialTheme.colorScheme.outlineVariant
+//            )
+//        }
+//        item { Spacer(modifier = Modifier.padding(16.dp)) }
 //
-//        Row(
-//            verticalAlignment = Alignment.CenterVertically,
-//            modifier = Modifier.clickable { openBottomSheet = true }) {
-//            Text(
-//                text = "Map App",
-//                fontSize = 16.sp,
-//            )
-//            Spacer(modifier = Modifier.weight(1f))
-//            Text(
-//                text = mapApp.name
-//                    .replace("_", " ")
-//                    .lowercase()
-//                    .replaceFirstChar { it.uppercase() },
-//                fontSize = 14.sp,
-//            )
+//        item {
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//                modifier = Modifier.clickable { openBottomSheet = true }) {
+//                Text(
+//                    text = "Map App",
+//                    fontSize = 16.sp,
+//                )
+//                Spacer(modifier = Modifier.weight(1f))
+//                Text(
+//                    text = mapApp.name
+//                        .replace("_", " ")
+//                        .lowercase()
+//                        .replaceFirstChar { it.uppercase() },
+//                    fontSize = 14.sp,
+//                )
+//            }
 //        }
     }
 }

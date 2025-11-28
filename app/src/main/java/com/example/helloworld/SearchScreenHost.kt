@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets
 fun SearchScreenHost(
     navController: NavController,
     query: String,
+    geoCategory: String,
     searchViewModel: SearchViewModel = viewModel()
 ) {
     val searchQuery by searchViewModel.searchQuery.collectAsState()
@@ -49,6 +50,13 @@ fun SearchScreenHost(
         // backend mappings and UI see a human-readable string like "Gas Stations".
         val decodedQuery = URLDecoder.decode(query, StandardCharsets.UTF_8.toString())
         searchViewModel.onSearchQueryChange(decodedQuery)
+    }
+
+    LaunchedEffect(geoCategory) {
+        // geoCategory is only meaningful when using the Geoapify backend. It scopes
+        // free-text searches to a chosen top-level Geoapify category.
+        val decodedCategory = URLDecoder.decode(geoCategory, StandardCharsets.UTF_8.toString())
+        searchViewModel.setGeoapifyTopLevelCategory(decodedCategory)
     }
 
     if (isLoading) {

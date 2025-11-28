@@ -33,8 +33,8 @@ class GeoapifyGeocodingService(
         }
     }
 
-    private suspend fun getApiKey(): String? {
-        val key = userPreferencesRepository.geoapifyApiKey.first()
+    private fun getApiKey(): String? {
+        val key = BuildConfig.GEOAPIFY_API_KEY
         if (key.isNullOrEmpty()) {
             Log.e("GeoapifyGeocoding", "Geoapify API key not configured")
             return null

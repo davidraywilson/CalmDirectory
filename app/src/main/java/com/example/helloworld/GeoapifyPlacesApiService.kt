@@ -20,18 +20,18 @@ class GeoapifyPlacesApiService(
     private val userPreferencesRepository: UserPreferencesRepository
 ) : PlacesBackend {
 
-    /**
-     * Default broad category set used for free-text searches when we don't have
-     * a specific known category (e.g. user typed "Target").
-     */
     private val defaultCategories =
         "catering,commercial,service,entertainment,leisure,accommodation,amenity"
 
-    /**
-     * Internal mapping between high-level conceptual categories (as surfaced on the
-     * landing screen or typed by the user) and the concrete Geoapify `categories`
-     * parameter values.
-     */
+    // Optional top-level Geoapify category chosen by the user for free-text
+    // searches (e.g. "catering", "commercial", ...).
+    @Volatile
+    private var selectedTopLevelCategory: String? = null
+
+    fun setTopLevelCategory(category: String?) {
+        selectedTopLevelCategory = category?.takeIf { it.isNotBlank() }
+    }
+
     private val categoryMappings: List<CategoryMapping> = listOf(
         CategoryMapping(
             labels = setOf("gas stations", "gas station", "fuel"),
@@ -73,8 +73,8 @@ class GeoapifyPlacesApiService(
         }
     }
 
-    private suspend fun getApiKey(): String? {
-        val key = userPreferencesRepository.geoapifyApiKey.first()
+    private fun getApiKey(): String? {
+        val key = BuildConfig.GEOAPIFY_API_KEY
         if (key.isNullOrEmpty()) {
             Log.e("GeoapifyPlacesApiService", "Geoapify API key not configured")
             return null
@@ -82,14 +82,6 @@ class GeoapifyPlacesApiService(
         return key
     }
 
-    /**
-     * Attempts to map a raw query string (either from the landing screen category
-     * or from user input) into a concrete Geoapify `categories` string.
-     *
-     * The matching is intentionally strict (exact match on a small set of
-     * normalized labels) so that free-form searches like "restaurants in NYC"
-     * are treated as text queries, not as category shortcuts.
-     */
     private fun mapQueryToCategories(query: String): String? {
         val normalized = query.trim().lowercase()
         if (normalized.isEmpty()) return null
@@ -104,7 +96,6 @@ class GeoapifyPlacesApiService(
 
         return try {
             val radiusMiles = userPreferencesRepository.searchRadius.first()
-            // Convert miles to meters (approx) and cap to ~10km to avoid huge search areas
             val radiusMeters = (radiusMiles * 1609).coerceAtMost(10_000)
             val trimmedQuery = query.trim()
             val categoriesForQuery = mapQueryToCategories(trimmedQuery)
@@ -112,17 +103,22 @@ class GeoapifyPlacesApiService(
             val httpStart = System.currentTimeMillis()
             val response: GeoapifyPlacesResponse = client.get("https://api.geoapify.com/v2/places") {
                 parameter("apiKey", apiKey)
-                // Use specific categories for known home screen categories when possible,
-                // otherwise fall back to a broad category set that covers typical POIs.
-                val categories = categoriesForQuery ?: defaultCategories
-                parameter("categories", categories)
+
+                // Choose categories in order of specificity:
+                // 1) Exact mapping based on the query text (e.g. "Restaurants")
+                // 2) User-selected top-level Geoapify category (e.g. "catering")
+                // 3) Broad default category set.
+                val effectiveCategories = when {
+                    categoriesForQuery != null -> categoriesForQuery
+                    selectedTopLevelCategory != null -> selectedTopLevelCategory!!
+                    else -> defaultCategories
+                }
+                parameter("categories", effectiveCategories)
                 parameter("limit", 30)
                 if (trimmedQuery.isNotEmpty() && categoriesForQuery == null) {
-                    // Narrow results on the server side when possible for free-text queries.
                     parameter("name", trimmedQuery)
                 }
                 if (lat != 0.0 || lon != 0.0) {
-                    // Constrain search area with a circle and sort by proximity within it
                     parameter("filter", "circle:$lon,$lat,$radiusMeters")
                     parameter("bias", "proximity:$lon,$lat")
                 }
@@ -131,7 +127,7 @@ class GeoapifyPlacesApiService(
 
             Log.d(
                 "GeoapifyPlacesApiService",
-                "search query='${trimmedQuery}' lat=$lat lon=$lon radiusMeters=$radiusMeters categories='${categoriesForQuery}' features=${response.features.size} httpMs=$httpDuration"
+                "search query='${trimmedQuery}' lat=$lat lon=$lon radiusMeters=$radiusMeters mappedCategories='${categoriesForQuery}' selectedTopLevelCategory='${selectedTopLevelCategory}' features=${response.features.size} httpMs=$httpDuration"
             )
 
             val allPois = response.features.mapNotNull { feature ->
@@ -160,9 +156,6 @@ class GeoapifyPlacesApiService(
                 )
             }
 
-            // For category-based queries (landing screen shortcuts), return all POIs in
-            // that category and radius. For free-text queries, filter client-side by
-            // name/description.
             if (categoriesForQuery != null) {
                 allPois
             } else if (trimmedQuery.isEmpty()) {
@@ -175,7 +168,6 @@ class GeoapifyPlacesApiService(
                 }
             }
         } catch (e: CancellationException) {
-            // Expected when the coroutine scope is cancelled (e.g. new query typed)
             Log.d("GeoapifyPlacesApiService", "Search cancelled", e)
             throw e
         } catch (e: Exception) {

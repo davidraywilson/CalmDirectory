@@ -34,6 +34,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private val _searchResults = MutableStateFlow<List<Poi>>(emptyList())
     val searchResults: StateFlow<List<Poi>> = _searchResults
 
+    // Only used when Geoapify is the active backend to scope free-text searches
+    // to a chosen top-level Geoapify category.
+    private val _geoapifyTopLevelCategory = MutableStateFlow<String?>(null)
+
+    fun setGeoapifyTopLevelCategory(category: String?) {
+        _geoapifyTopLevelCategory.value = category?.takeIf { it.isNotBlank() }
+    }
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -82,7 +90,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         "query='${query.trim()}', lat=$lat, lon=$lon, backend=${currentBackend.javaClass.simpleName}, locationTimeMs=$locationDuration"
                     )
                     val searchStart = System.currentTimeMillis()
-                    val results = currentBackend.search(query, lat, lon)
+                    val backend = currentBackend
+                    val results = when (backend) {
+                        is GeoapifyPlacesApiService -> {
+                            backend.setTopLevelCategory(_geoapifyTopLevelCategory.value)
+                            backend.search(query, lat, lon)
+                        }
+                        else -> backend.search(query, lat, lon)
+                    }
                     val searchDuration = System.currentTimeMillis() - searchStart
                     Log.d("SearchViewModel", "Search returned ${results.size} results in ${searchDuration} ms")
                     _searchResults.value = results

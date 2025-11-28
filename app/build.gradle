@@ -1,8 +1,15 @@
+import java.util.Properties
 
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.0'
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 
 android {
@@ -15,6 +22,8 @@ android {
         targetSdk 35
         versionCode 1
         versionName "1.0"
+
+        buildConfigField "String", "GEOAPIFY_API_KEY", "\"${localProperties.getProperty('GEOAPIFY_API_KEY', '')}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
