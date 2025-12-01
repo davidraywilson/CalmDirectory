@@ -45,7 +45,7 @@ fun MainScreen(
     val location by locationRepository.location.collectAsState()
     val userPreferencesRepository = remember { UserPreferencesRepository(context) }
     val useDeviceLocation by userPreferencesRepository.useDeviceLocation.collectAsState(initial = false)
-    val defaultLocation by userPreferencesRepository.defaultLocation.collectAsState(initial = "")
+    val defaultLocation by userPreferencesRepository.defaultLocation.collectAsState(initial = null)
     val bottomSheetState = rememberModalBottomSheetMMDState(
         skipPartiallyExpanded = false,
         confirmValueChange = { it != SheetValue.Hidden }
@@ -53,9 +53,7 @@ fun MainScreen(
     var showLocationBottomSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(useDeviceLocation, defaultLocation) {
-        if (!useDeviceLocation && (defaultLocation == null || defaultLocation!!.isBlank())) {
-            showLocationBottomSheet = true
-        }
+        showLocationBottomSheet = !useDeviceLocation && defaultLocation.isNullOrBlank()
     }
 
     if (isLoading) {
