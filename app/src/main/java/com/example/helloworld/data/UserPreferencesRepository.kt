@@ -23,7 +23,8 @@ class UserPreferencesRepository(
 
     val useDeviceLocation: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
-            preferences[USE_DEVICE_LOCATION] ?: true
+            // Default to NOT using device location so onboarding can prompt for a manual location.
+            preferences[USE_DEVICE_LOCATION] ?: false
         }
 
     val defaultLocation: Flow<String?> = context.dataStore.data
@@ -38,8 +39,8 @@ class UserPreferencesRepository(
 
     val searchProvider: Flow<SearchProvider> = context.dataStore.data
         .map { preferences ->
-            // Default to GEOAPIFY so the app works out of the box with the built-in key.
-            SearchProvider.valueOf(preferences[SEARCH_PROVIDER] ?: SearchProvider.GEOAPIFY.name)
+            // Default to HERE so the app works out of the box with the built-in key.
+            SearchProvider.valueOf(preferences[SEARCH_PROVIDER] ?: SearchProvider.HERE.name)
         }
 
     val searchRadius: Flow<Int> = context.dataStore.data

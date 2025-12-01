@@ -229,7 +229,7 @@ fun DirectoryTopAppBar(
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val userPreferencesRepository = remember { UserPreferencesRepository(context) }
     val mapApp by userPreferencesRepository.mapApp.collectAsState(initial = MapApp.DEFAULT)
-    val searchProvider by userPreferencesRepository.searchProvider.collectAsState(initial = SearchProvider.GEOAPIFY)
+    val searchProvider by userPreferencesRepository.searchProvider.collectAsState(initial = SearchProvider.HERE)
 
     Column {
         TopAppBarMMD(
