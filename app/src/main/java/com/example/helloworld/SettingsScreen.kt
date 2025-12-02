@@ -1,12 +1,14 @@
 package com.example.helloworld
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -25,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -34,7 +37,6 @@ import androidx.navigation.NavController
 import com.example.helloworld.data.MapApp
 import com.example.helloworld.data.SearchProvider
 import com.example.helloworld.data.UserPreferencesRepository
-import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.divider.HorizontalDividerMMD
 import com.mudita.mmd.components.lazy.LazyColumnMMD
@@ -42,6 +44,7 @@ import com.mudita.mmd.components.radio_button.RadioButtonMMD
 import com.mudita.mmd.components.snackbar.SnackbarHostStateMMD
 import com.mudita.mmd.components.switcher.SwitchMMD
 import com.mudita.mmd.components.text_field.TextFieldMMD
+import com.mudita.mmd.components.search_bar.SearchBarDefaultsMMD
 import com.mudita.mmd.components.slider.SliderMMD
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -73,8 +76,8 @@ fun SettingsScreen(
     val locationSuggestions by viewModel.locationSuggestions.collectAsState()
     val mapApp by userPreferencesRepository.mapApp.collectAsState(initial = MapApp.DEFAULT)
     var searchProvider by remember { mutableStateOf<SearchProvider?>(null) }
-    val bottomSheetState = rememberModalBottomSheetMMDState()
     val locationSettingsBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val suggestionsBringIntoViewRequester = remember { BringIntoViewRequester() }
 
     LaunchedEffect(Unit) {
         searchProvider = userPreferencesRepository.searchProvider.first()
@@ -98,7 +101,19 @@ fun SettingsScreen(
         return "x".repeat(key.length - 4) + key.takeLast(4)
     }
 
-    LazyColumnMMD(modifier = Modifier.fillMaxSize().padding(vertical = 16.dp)) {
+    LaunchedEffect(isEditingLocation, locationSuggestions) {
+        if (isEditingLocation && locationSuggestions.isNotEmpty()) {
+            // Ensure the suggestions box is fully visible above the keyboard
+            suggestionsBringIntoViewRequester.bringIntoView()
+        }
+    }
+
+    LazyColumnMMD(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .padding(vertical = 16.dp)
+    ) {
         item {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(text = "Data Provider", fontSize = 16.sp)
@@ -283,29 +298,49 @@ fun SettingsScreen(
                         .bringIntoViewRequester(locationSettingsBringIntoViewRequester)
                 ) {
                     if (isEditingLocation) {
-                        TextFieldMMD(
-                            value = newDefaultLocation,
-                            onValueChange = {
+                        val visibleSuggestions = locationSuggestions.take(4)
+
+                        SearchBarDefaultsMMD.InputField(
+                            query = newDefaultLocation,
+                            onQueryChange = {
                                 newDefaultLocation = it
                                 viewModel.onDefaultLocationChange(it)
                             },
-                            label = { Text("Default Location") }
+                            onSearch = { /* we save only when user taps Save */ },
+                            expanded = true,
+                            onExpandedChange = { /* no-op */ },
+                            placeholder = { Text("Default Location") },
+                            modifier = Modifier.onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    coroutineScope.launch {
+                                        locationSettingsBringIntoViewRequester.bringIntoView()
+                                    }
+                                }
+                            }
                         )
 
-                        locationSuggestions.forEach { suggestion ->
+                        if (visibleSuggestions.isNotEmpty()) {
+                            Spacer(modifier = Modifier.padding(top = 8.dp))
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clickable {
-                                        newDefaultLocation = suggestion
-                                        viewModel.onDefaultLocationChange("")
-                                    }
+                                    .bringIntoViewRequester(suggestionsBringIntoViewRequester)
                             ) {
-                                Text(
-                                    text = suggestion,
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                                Column {
+                                    visibleSuggestions.forEach { suggestion ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    newDefaultLocation = suggestion
+                                                    viewModel.onDefaultLocationChange("")
+                                                }
+                                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(text = suggestion)
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -316,6 +351,7 @@ fun SettingsScreen(
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar("Default location saved")
                             }
+                            viewModel.onDefaultLocationChange("")
                             isEditingLocation = false
                         }) {
                             Text("Save")
