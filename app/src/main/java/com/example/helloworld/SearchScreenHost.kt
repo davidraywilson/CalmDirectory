@@ -1,9 +1,5 @@
 package com.example.helloworld
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -32,30 +28,6 @@ fun SearchScreenHost(
     val searchResults by searchViewModel.searchResults.collectAsState()
     val isLoading by searchViewModel.isLoading.collectAsState()
     val context = LocalContext.current
-
-    val requestPermissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                if (searchQuery.isNotBlank()) {
-                    searchViewModel.onSearchQueryChange(searchQuery)
-                }
-            } else {
-                // Handle the case where permission is denied.
-            }
-        }
-
-    LaunchedEffect(Unit) {
-        val hasPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasPermission) {
-            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
 
     LaunchedEffect(query) {
         val decodedQuery = URLDecoder.decode(query, StandardCharsets.UTF_8.toString())

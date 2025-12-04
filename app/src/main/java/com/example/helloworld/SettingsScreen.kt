@@ -1,5 +1,9 @@
 package com.example.helloworld
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +36,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.helloworld.data.MapApp
@@ -78,6 +83,22 @@ fun SettingsScreen(
     var searchProvider by remember { mutableStateOf<SearchProvider?>(null) }
     val locationSettingsBringIntoViewRequester = remember { BringIntoViewRequester() }
     val suggestionsBringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    val requestLocationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+            if (fineGranted || coarseGranted) {
+                viewModel.setUseDeviceLocation(true)
+            } else {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Location permission denied. Using default location instead.")
+                }
+            }
+        }
 
     LaunchedEffect(Unit) {
         searchProvider = userPreferencesRepository.searchProvider.first()
@@ -280,7 +301,27 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.weight(1f))
                 SwitchMMD(
                     checked = useDeviceLocation,
-                    onCheckedChange = { viewModel.setUseDeviceLocation(it) }
+                    onCheckedChange = { isChecked ->
+                        if (isChecked) {
+                            val hasPermission = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                            if (hasPermission) {
+                                viewModel.setUseDeviceLocation(true)
+                            } else {
+                                requestLocationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            }
+                        } else {
+                            viewModel.setUseDeviceLocation(false)
+                        }
+                    }
                 )
             }
         }

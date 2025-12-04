@@ -42,7 +42,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     init {
         fetchLocation()
 
-        // Observe search provider changes to switch autocomplete backend.
         viewModelScope.launch {
             userPreferencesRepository.searchProvider.collect { provider ->
                 currentBackend = when (provider) {
@@ -57,12 +56,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private fun fetchLocation() {
         viewModelScope.launch {
             if (userPreferencesRepository.useDeviceLocation.first()) {
+                _currentLocation.value = "Fetching location..."
+
                 if (ContextCompat.checkSelfPermission(
                         getApplication(),
                         Manifest.permission.ACCESS_FINE_LOCATION
                     ) == PackageManager.PERMISSION_GRANTED
                 ) {
-                    val location = locationService.getCurrentLocation()
+                    val location = locationService.getBestLocationOrNull()
                     if (location != null) {
                         val provider = userPreferencesRepository.searchProvider.first()
                         val address = when (provider) {

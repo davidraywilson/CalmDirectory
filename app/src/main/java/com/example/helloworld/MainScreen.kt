@@ -68,11 +68,7 @@ fun MainScreen(
             onSettingsClicked = { navController.navigate("settings") }
         )
     } else {
-        LocationPermissionRequest(
-            onPermissionGranted = {
-                locationRepository.startLocationUpdates()
-            }
-        )
+        locationRepository.startLocationUpdates()
 
         if (showLocationBottomSheet) {
             ModalBottomSheetMMD(
@@ -138,30 +134,3 @@ fun MainScreen(
     }
 }
 
-@Composable
-fun LocationPermissionRequest(onPermissionGranted: () -> Unit) {
-    val context = LocalContext.current
-    val permission = Manifest.permission.ACCESS_FINE_LOCATION
-    var permissionGranted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            permissionGranted = true
-            onPermissionGranted()
-        }
-    }
-
-    if (!permissionGranted) {
-        null;
-    } else {
-        onPermissionGranted()
-    }
-}

@@ -19,6 +19,39 @@ class LocationService(private val context: Context) {
 
     private var locationListener: LocationListener? = null
 
+    /**
+     * Returns the best available location using a two-step strategy:
+     * 1. Use the newest last-known location from GPS or NETWORK providers, if present.
+     * 2. Fallback to actively requesting a fresh location fix.
+     */
+    suspend fun getBestLocationOrNull(): Location? {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return null
+        }
+
+        val candidates = listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER
+        ).mapNotNull { provider ->
+            if (locationManager.isProviderEnabled(provider)) {
+                locationManager.getLastKnownLocation(provider)
+            } else {
+                null
+            }
+        }
+
+        val newestLastKnown = candidates.maxByOrNull { it.time }
+        if (newestLastKnown != null) {
+            return newestLastKnown
+        }
+
+        return getCurrentLocation()
+    }
+
     suspend fun getCurrentLocation(): Location? {
         if (ContextCompat.checkSelfPermission(
                 context,
@@ -28,11 +61,14 @@ class LocationService(private val context: Context) {
             return null
         }
 
-        // Use GPS provider for highest accuracy, which is crucial for de-googled devices
-        // that might not have advanced network location capabilities.
-        val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        if (!isGpsEnabled) {
-            return null
+        // Prefer GPS provider for highest accuracy
+        // but gracefully fall back to NETWORK provider when GPS is disabled or unavailable.
+        val provider: String = when {
+            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ->
+                LocationManager.GPS_PROVIDER
+            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ->
+                LocationManager.NETWORK_PROVIDER
+            else -> return null
         }
 
         return suspendCancellableCoroutine { continuation ->
@@ -42,7 +78,7 @@ class LocationService(private val context: Context) {
             }
             LocationManagerCompat.getCurrentLocation(
                 locationManager,
-                LocationManager.GPS_PROVIDER,
+                provider,
                 cancellationSignal,
                 ContextCompat.getMainExecutor(context)
             ) { location: Location? ->
@@ -60,7 +96,6 @@ class LocationService(private val context: Context) {
             return
         }
         locationListener = listener
-        // Request updates from GPS provider
         if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             locationManager.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER,
@@ -69,7 +104,6 @@ class LocationService(private val context: Context) {
                 listener
             )
         }
-        // Also request updates from Network provider if available
         if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER,

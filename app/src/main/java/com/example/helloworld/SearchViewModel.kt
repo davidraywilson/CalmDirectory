@@ -139,9 +139,31 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
         val deferred = viewModelScope.async {
             val useDeviceLocation = userPreferencesRepository.useDeviceLocation.first()
-            val location = if (useDeviceLocation) {
-                val deviceLocation = locationService.getCurrentLocation()
-                (deviceLocation?.latitude ?: 0.0) to (deviceLocation?.longitude ?: 0.0)
+            val location: Pair<Double, Double> = if (useDeviceLocation) {
+                val deviceLocation = locationService.getBestLocationOrNull()
+                val lat = deviceLocation?.latitude
+                val lon = deviceLocation?.longitude
+
+                if (lat != null && lon != null && !(lat == 0.0 && lon == 0.0)) {
+                    lat to lon
+                } else {
+                    // Fallback to default location if configured.
+                    val defaultLocation = userPreferencesRepository.defaultLocation.first()
+                    if (!defaultLocation.isNullOrBlank()) {
+                        val provider = userPreferencesRepository.searchProvider.first()
+                        val coords = when (provider) {
+                            SearchProvider.GOOGLE_PLACES ->
+                                googleGeocodingService.getCoordinates(defaultLocation)
+                            SearchProvider.GEOAPIFY ->
+                                geoapifyGeocodingService.getCoordinates(defaultLocation)
+                            SearchProvider.HERE ->
+                                hereGeocodingService.getCoordinates(defaultLocation)
+                        }
+                        coords ?: (0.0 to 0.0)
+                    } else {
+                        0.0 to 0.0
+                    }
+                }
             } else {
                 val defaultLocation = userPreferencesRepository.defaultLocation.first()
                 if (!defaultLocation.isNullOrBlank()) {

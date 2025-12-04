@@ -45,15 +45,6 @@ class HerePlacesApiService(
     override suspend fun search(query: String, lat: Double, lon: Double): List<Poi> {
         val apiKey = getApiKey() ?: return emptyList()
 
-        // Avoid unconstrained global searches when we have no valid location.
-        if (lat == 0.0 && lon == 0.0) {
-            Log.w(
-                "HerePlacesApiService",
-                "Skipping search: invalid location (0,0); configure device or default location"
-            )
-            return emptyList()
-        }
-
         return try {
             val radiusMiles = userPreferencesRepository.searchRadius.first()
             val radiusMeters = (radiusMiles * 1609).coerceAtMost(50_000)
@@ -63,9 +54,13 @@ class HerePlacesApiService(
             val response: HereDiscoverResponse = client.get("https://discover.search.hereapi.com/v1/discover") {
                 parameter("apiKey", apiKey)
                 parameter("q", trimmedQuery)
-                parameter("at", "$lat,$lon")
+
+                if (lat != 0.0 || lon != 0.0) {
+                    parameter("at", "$lat,$lon")
+                    parameter("radius", radiusMeters)
+                }
+
                 parameter("limit", 30)
-                parameter("radius", radiusMeters)
             }.body()
             val httpDuration = System.currentTimeMillis() - httpStart
 
