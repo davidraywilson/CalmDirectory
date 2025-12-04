@@ -263,7 +263,6 @@ fun SettingsScreen(
                 )
 
 
-
                 // Added "Open Now"
                 Row(
                     verticalAlignment = Alignment.CenterVertically) {
