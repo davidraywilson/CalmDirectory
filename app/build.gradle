@@ -13,11 +13,11 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace 'com.example.helloworld'
+    namespace 'com.calmapps.directory'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.example.helloworld"
+        applicationId "com.calmapps.directory"
         minSdk 28
         targetSdk 35
         versionCode 1
