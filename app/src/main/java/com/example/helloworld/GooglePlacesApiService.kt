@@ -77,7 +77,9 @@ class GooglePlacesApiService(
                     name = place.name ?: "N/A",
                     address = parseAddress(place.address),
                     hours = place.openingHours?.weekdayText ?: emptyList(),
-                    phone = place.phoneNumber?.let { formatPhoneNumber(it) },
+                    // Store raw phone; formatting is handled in the UI layer using
+                    // the POI's country and libphonenumber.
+                    phone = place.phoneNumber,
                     description = place.placeTypes?.joinToString(", ") ?: "N/A",
                     website = place.websiteUri?.toString(),
                     lat = place.latLng?.latitude,
@@ -114,7 +116,8 @@ class GooglePlacesApiService(
             return Address("N/A", "", "", "", "")
         }
         val parts = addressString.split(",").map { it.trim() }
-        val street = parts.getOrElse(0) { addressString }
+        val rawStreet = parts.getOrElse(0) { addressString }
+        val street = normalizeStreet(rawStreet)
         val city = parts.getOrElse(1) { "" }
         val country = if (parts.size > 2 && parts.last().matches(Regex("[A-Za-z ]+"))) parts.last() else ""
 
@@ -131,19 +134,5 @@ class GooglePlacesApiService(
         return Address(street, city, state, zip, country)
     }
 
-    private fun formatPhoneNumber(phone: String): String {
-        val digitsOnly = phone.filter { it.isDigit() }
-        if (digitsOnly.length == 11 && digitsOnly.startsWith("1")) {
-            val areaCode = digitsOnly.substring(1, 4)
-            val firstPart = digitsOnly.substring(4, 7)
-            val secondPart = digitsOnly.substring(7)
-            return "($areaCode) $firstPart-$secondPart"
-        } else if (digitsOnly.length == 10) {
-            val areaCode = digitsOnly.substring(0, 3)
-            val firstPart = digitsOnly.substring(3, 6)
-            val secondPart = digitsOnly.substring(6)
-            return "($areaCode) $firstPart-$secondPart"
-        }
-        return phone // or return some default formatting
-    }
+
 }

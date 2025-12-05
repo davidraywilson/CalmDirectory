@@ -39,8 +39,10 @@ class UserPreferencesRepository(
 
     val searchProvider: Flow<SearchProvider> = context.dataStore.data
         .map { preferences ->
-            // Default to HERE so the app works out of the box with the built-in key.
-            SearchProvider.valueOf(preferences[SEARCH_PROVIDER] ?: SearchProvider.HERE.name)
+            val stored = preferences[SEARCH_PROVIDER]
+            // Default to HERE so the app works out of the box, and gracefully
+            // fall back if an unknown value (e.g. a removed provider) is stored.
+            SearchProvider.values().firstOrNull { it.name == stored } ?: SearchProvider.HERE
         }
 
     val searchRadius: Flow<Int> = context.dataStore.data

@@ -21,13 +21,11 @@ import kotlinx.coroutines.launch
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
     private val userPreferencesRepository = UserPreferencesRepository(application)
     private val googleBackend: PlacesBackend = GooglePlacesApiService(application, userPreferencesRepository)
-    private val geoapifyBackend: PlacesBackend = GeoapifyPlacesApiService(userPreferencesRepository)
     private val hereBackend: PlacesBackend = HerePlacesApiService(userPreferencesRepository)
     @Volatile
     private var currentBackend: PlacesBackend = googleBackend
     private val locationService = LocationService(application)
     private val googleGeocodingService = GoogleGeocodingService(userPreferencesRepository)
-    private val geoapifyGeocodingService = GeoapifyGeocodingService(userPreferencesRepository)
     private val hereGeocodingService = HereGeocodingService(userPreferencesRepository)
 
     private val _searchQuery = MutableStateFlow("")
@@ -35,14 +33,6 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _searchResults = MutableStateFlow<List<Poi>>(emptyList())
     val searchResults: StateFlow<List<Poi>> = _searchResults
-
-    // Only used when Geoapify is the active backend to scope free-text searches
-    // to a chosen top-level Geoapify category.
-    private val _geoapifyTopLevelCategory = MutableStateFlow<String?>(null)
-
-    fun setGeoapifyTopLevelCategory(category: String?) {
-        _geoapifyTopLevelCategory.value = category?.takeIf { it.isNotBlank() }
-    }
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -70,7 +60,6 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             userPreferencesRepository.searchProvider.collect { provider ->
                 currentBackend = when (provider) {
                     SearchProvider.GOOGLE_PLACES -> googleBackend
-                    SearchProvider.GEOAPIFY -> geoapifyBackend
                     SearchProvider.HERE -> hereBackend
                 }
             }
@@ -94,13 +83,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     )
                     val searchStart = System.currentTimeMillis()
                     val backend = currentBackend
-                    val results = when (backend) {
-                        is GeoapifyPlacesApiService -> {
-                            backend.setTopLevelCategory(_geoapifyTopLevelCategory.value)
-                            backend.search(query, lat, lon)
-                        }
-                        else -> backend.search(query, lat, lon)
-                    }
+                    val results = backend.search(query, lat, lon)
                     val searchDuration = System.currentTimeMillis() - searchStart
                     Log.d("SearchViewModel", "Search returned ${results.size} results in ${searchDuration} ms")
                     _searchResults.value = results
@@ -154,8 +137,6 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                         val coords = when (provider) {
                             SearchProvider.GOOGLE_PLACES ->
                                 googleGeocodingService.getCoordinates(defaultLocation)
-                            SearchProvider.GEOAPIFY ->
-                                geoapifyGeocodingService.getCoordinates(defaultLocation)
                             SearchProvider.HERE ->
                                 hereGeocodingService.getCoordinates(defaultLocation)
                         }
@@ -171,8 +152,6 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     val coords = when (provider) {
                         SearchProvider.GOOGLE_PLACES ->
                             googleGeocodingService.getCoordinates(defaultLocation)
-                        SearchProvider.GEOAPIFY ->
-                            geoapifyGeocodingService.getCoordinates(defaultLocation)
                         SearchProvider.HERE ->
                             hereGeocodingService.getCoordinates(defaultLocation)
                     }

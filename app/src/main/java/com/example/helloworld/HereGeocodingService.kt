@@ -1,6 +1,7 @@
 package com.example.helloworld
 
 import android.util.Log
+import com.calmapps.directory.BuildConfig
 import com.example.helloworld.data.UserPreferencesRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -35,7 +36,7 @@ class HereGeocodingService(
 
     private fun getApiKey(): String? {
         val key = BuildConfig.HERE_API_KEY
-        if (key.isNullOrEmpty()) {
+        if (key.isEmpty()) {
             Log.e("HereGeocodingService", "HERE API key not configured")
             return null
         }
@@ -79,7 +80,8 @@ class HereGeocodingService(
             val httpDuration = System.currentTimeMillis() - httpStart
             Log.d("HereGeocodingService", "getAddress HTTP call took ${httpDuration} ms")
 
-            response.items.firstOrNull()?.address?.label
+            val label = response.items.firstOrNull()?.address?.label
+            label?.let { normalizeStreetInAddress(it) }
         } catch (e: Exception) {
             Log.e("HereGeocodingService", "Error getting address", e)
             null

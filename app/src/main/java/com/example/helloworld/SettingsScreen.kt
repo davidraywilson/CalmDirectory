@@ -170,27 +170,6 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                         .clickable {
-                            searchProvider = SearchProvider.GEOAPIFY
-                            coroutineScope.launch {
-                                userPreferencesRepository.saveSearchProvider(SearchProvider.GEOAPIFY)
-                                snackbarHostState.showSnackbar("Using Geoapify backend")
-                            }
-                        }
-                ) {
-                    RadioButtonMMD(
-                        selected = searchProvider == SearchProvider.GEOAPIFY,
-                        onClick = null,
-                        modifier = Modifier.semantics{ contentDescription = "Geoapify" }
-                    )
-                    Text(text = "Geoapify", modifier = Modifier.padding(start = 8.dp))
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clickable {
                             searchProvider = SearchProvider.HERE
                             coroutineScope.launch {
                                 userPreferencesRepository.saveSearchProvider(SearchProvider.HERE)

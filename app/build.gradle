@@ -23,7 +23,6 @@ android {
         versionCode 1
         versionName "1.0"
 
-        buildConfigField "String", "GEOAPIFY_API_KEY", "\"${localProperties.getProperty('GEOAPIFY_API_KEY', '')}\""
         buildConfigField "String", "HERE_API_KEY", "\"${localProperties.getProperty('HERE_API_KEY', '')}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -86,6 +85,9 @@ dependencies {
     implementation "io.ktor:ktor-client-android:2.3.2"
     implementation "io.ktor:ktor-client-content-negotiation:2.3.2"
     implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.2"
+
+    // Phone number formatting
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.13.26'
 
 
     testImplementation 'junit:junit'

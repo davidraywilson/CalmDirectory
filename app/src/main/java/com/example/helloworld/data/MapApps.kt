@@ -9,6 +9,5 @@ enum class MapApp {
 
 enum class SearchProvider {
     GOOGLE_PLACES,
-    GEOAPIFY,
     HERE
 }

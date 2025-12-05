@@ -61,7 +61,8 @@ class GoogleGeocodingService(private val userPreferencesRepository: UserPreferen
             if (response.status != "OK") {
                 Log.e("GoogleGeocodingService", "Geocoding API returned status: ${response.status}")
             }
-            response.results.firstOrNull()?.formattedAddress
+            val address = response.results.firstOrNull()?.formattedAddress
+            address?.let { normalizeStreetInAddress(it) }
         } catch (e: Exception) {
             Log.e("GoogleGeocodingService", "Error getting address", e)
             null

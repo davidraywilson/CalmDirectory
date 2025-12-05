@@ -1,6 +1,7 @@
 package com.example.helloworld
 
 import android.util.Log
+import com.calmapps.directory.BuildConfig
 import com.example.helloworld.data.UserPreferencesRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -35,7 +36,7 @@ class HerePlacesApiService(
 
     private fun getApiKey(): String? {
         val key = BuildConfig.HERE_API_KEY
-        if (key.isNullOrEmpty()) {
+        if (key.isEmpty()) {
             Log.e("HerePlacesApiService", "HERE API key not configured")
             return null
         }
@@ -72,14 +73,30 @@ class HerePlacesApiService(
             response.items.mapNotNull { item ->
                 val title = item.title ?: return@mapNotNull null
                 val addr = item.address
-                val address = Address(
-                    street = listOfNotNull(addr?.street, addr?.houseNumber)
+                val resolvedCountry = when (val code = addr?.countryCode) {
+                    null, "" -> addr?.countryName ?: ""
+                    else -> if (code.length == 2) {
+                        // Already an ISO 3166-1 alpha-2 code (e.g., "DE"). Use as-is.
+                        code
+                    } else {
+                        // For 3-letter codes like "DEU", prefer the human-readable country name
+                        // so that inferRegionCode can map it and the UI shows a friendly label.
+                        addr?.countryName ?: code
+                    }
+                }
+                val composedStreet = when {
+                    !addr?.houseNumber.isNullOrBlank() && !addr?.street.isNullOrBlank() ->
+                        "${addr!!.houseNumber} ${addr.street}"
+                    else -> listOfNotNull(addr?.street, addr?.houseNumber)
                         .joinToString(" ")
-                        .ifBlank { "" },
+                }
+
+                val address = Address(
+                    street = composedStreet.ifBlank { "" },
                     city = addr?.city ?: "",
                     state = addr?.state ?: "",
                     zip = addr?.postalCode ?: "",
-                    country = addr?.countryName ?: addr?.countryCode ?: ""
+                    country = resolvedCountry
                 )
 
                 val hoursList = item.openingHours

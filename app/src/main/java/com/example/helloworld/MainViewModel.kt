@@ -3,6 +3,7 @@ package com.example.helloworld
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.calmapps.directory.BuildConfig
 import com.example.helloworld.data.SearchProvider
 import com.example.helloworld.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.Flow
@@ -28,8 +29,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) { provider, googleKey ->
         when (provider) {
             SearchProvider.GOOGLE_PLACES -> googleKey
-            // Geoapify key is provided via BuildConfig from local.properties
-            SearchProvider.GEOAPIFY -> BuildConfig.GEOAPIFY_API_KEY
             // HERE key is also provided via BuildConfig from local.properties
             SearchProvider.HERE -> BuildConfig.HERE_API_KEY
         }

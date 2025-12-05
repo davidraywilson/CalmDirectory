@@ -9,8 +9,6 @@ data class Poi(
     val website: String?,
     val lat: Double?,
     val lng: Double?,
-    // Optional Geoapify-specific place identifier used to fetch richer details
-    val geoapifyPlaceId: String? = null,
 )
 
 data class Address(

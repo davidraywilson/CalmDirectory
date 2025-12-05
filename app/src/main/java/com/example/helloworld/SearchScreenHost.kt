@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets
 fun SearchScreenHost(
     navController: NavController,
     query: String,
-    geoCategory: String,
     searchViewModel: SearchViewModel = viewModel()
 ) {
     val searchQuery by searchViewModel.searchQuery.collectAsState()
@@ -35,11 +34,6 @@ fun SearchScreenHost(
         if (currentQuery.isBlank()) {
             searchViewModel.onSearchQueryChange(decodedQuery)
         }
-    }
-
-    LaunchedEffect(geoCategory) {
-        val decodedCategory = URLDecoder.decode(geoCategory, StandardCharsets.UTF_8.toString())
-        searchViewModel.setGeoapifyTopLevelCategory(decodedCategory)
     }
 
     if (isLoading) {
@@ -62,6 +56,10 @@ fun SearchScreenHost(
                 val encodedAddress = URLEncoder
                     .encode(addressString, StandardCharsets.UTF_8.toString())
                     .replace("/", "%2F")
+                val country = poi.address.country
+                val encodedCountry = URLEncoder
+                    .encode(country, StandardCharsets.UTF_8.toString())
+                    .replace("/", "%2F")
                 val rawPhone = poi.phone?.takeIf { it.isNotBlank() } ?: "NA"
                 val encodedPhone = URLEncoder
                     .encode(rawPhone, StandardCharsets.UTF_8.toString())
@@ -76,7 +74,7 @@ fun SearchScreenHost(
                     )
                     .replace("/", "%2F")
                 var route =
-                    "details/$encodedName/$encodedAddress/$encodedPhone/$encodedDescription/$encodedHours"
+                    "details/$encodedName/$encodedAddress/$encodedCountry/$encodedPhone/$encodedDescription/$encodedHours"
                 if (poi.website != null) {
                     val encodedWebsite =
                         URLEncoder.encode(poi.website, StandardCharsets.UTF_8.toString())
@@ -85,11 +83,6 @@ fun SearchScreenHost(
                 if (poi.lat != null && poi.lng != null) {
                     route += if (route.contains("?")) "&" else "?"
                     route += "lat=${poi.lat}&lng=${poi.lng}"
-                }
-                if (!poi.geoapifyPlaceId.isNullOrBlank()) {
-                    val encodedGeoId = URLEncoder.encode(poi.geoapifyPlaceId, StandardCharsets.UTF_8.toString())
-                    route += if (route.contains("?")) "&" else "?"
-                    route += "geoPlaceId=$encodedGeoId"
                 }
                 navController.navigate(route)
             }
