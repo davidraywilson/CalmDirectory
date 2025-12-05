@@ -53,6 +53,7 @@ import com.mudita.mmd.components.search_bar.SearchBarDefaultsMMD
 import com.mudita.mmd.components.slider.SliderMMD
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Arrangement
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -112,7 +113,9 @@ fun SettingsScreen(
     }
 
     val searchRadius by userPreferencesRepository.searchRadius.collectAsState(initial = 10)
+    val openNow by userPreferencesRepository.openNow.collectAsState(initial = false)
     var sliderValue by remember(searchRadius) { mutableStateOf(searchRadius.toFloat()) }
+    var openNowValue by remember(openNow) { mutableStateOf(openNow) }
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
 
     fun maskApiKey(key: String): String {
@@ -279,6 +282,29 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp, horizontal = 0.dp)
                 )
+
+
+                // Added "Open Now"
+                Row(
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Open now (Google only)",
+                        fontSize = 16.sp,
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    SwitchMMD(
+                        checked = openNowValue,
+                        onCheckedChange = {newValue ->
+                            openNowValue = newValue
+                            coroutineScope.launch {
+                                userPreferencesRepository.saveOpenNow(newValue)
+                            }
+                        },
+                    )
+                }
+
+                Spacer(modifier = Modifier.padding(16.dp))
+                // ------------------
             }
         }
 

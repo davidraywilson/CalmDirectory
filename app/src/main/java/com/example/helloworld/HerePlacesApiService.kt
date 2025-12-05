@@ -47,6 +47,7 @@ class HerePlacesApiService(
 
         return try {
             val radiusMiles = userPreferencesRepository.searchRadius.first()
+            val openNow = userPreferencesRepository.openNow.first()
             val radiusMeters = (radiusMiles * 1609).coerceAtMost(50_000)
             val trimmedQuery = query.trim().ifEmpty { "*" }
 
@@ -82,12 +83,17 @@ class HerePlacesApiService(
                     country = addr?.countryName ?: addr?.countryCode ?: ""
                 )
 
+                // TODO: add is open filter
+                //val isOpen = item.openingHours?.firstOrNull()?.isOpen ?: true
+                //if (openNow && !isOpen) return@mapNotNull null
+
                 val hoursList = item.openingHours
                     ?.flatMap { it.text.orEmpty() }
                     ?.map { it.trim() }
                     ?.filter { it.isNotEmpty() }
                     ?.distinct()
                     ?: emptyList()
+
 
                 Poi(
                     name = title,

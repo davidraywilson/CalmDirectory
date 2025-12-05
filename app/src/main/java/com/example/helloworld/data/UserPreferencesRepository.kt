@@ -48,6 +48,11 @@ class UserPreferencesRepository(
             preferences[SEARCH_RADIUS] ?: 10 // default 10 miles
         }
 
+    val openNow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[OPEN_NOW] ?: false // default to false
+        }
+
     suspend fun saveGoogleApiKey(apiKey: String) {
         context.dataStore.edit { settings ->
             settings[API_KEY] = apiKey
@@ -78,6 +83,12 @@ class UserPreferencesRepository(
         }
     }
 
+    suspend fun saveOpenNow(open_now: Boolean) {
+        context.dataStore.edit { settings ->
+            settings[OPEN_NOW] = open_now
+        }
+    }
+
     suspend fun saveSearchProvider(provider: SearchProvider) {
         context.dataStore.edit { settings ->
             settings[SEARCH_PROVIDER] = provider.name
@@ -91,6 +102,8 @@ class UserPreferencesRepository(
         val MAP_APP = stringPreferencesKey("map_app")
         val SEARCH_PROVIDER = stringPreferencesKey("search_provider")
         val SEARCH_RADIUS = intPreferencesKey("search_radius") // in miles
+
+        val OPEN_NOW = booleanPreferencesKey("open_now")
 
     }
 }

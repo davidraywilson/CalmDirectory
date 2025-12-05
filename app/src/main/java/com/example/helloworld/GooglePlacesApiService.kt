@@ -57,6 +57,10 @@ class GooglePlacesApiService(
         val requestBuilder = SearchByTextRequest.builder(query, placeFields)
         val searchRadius = userPreferencesRepository.searchRadius.first()
 
+        // Open Now
+        val openNow = userPreferencesRepository.openNow.first()
+        requestBuilder.isOpenNow = openNow
+
         // Only add location restriction if a valid location is provided
         if (lat != 0.0 || lon != 0.0) {
             val miles = searchRadius.toDouble()
