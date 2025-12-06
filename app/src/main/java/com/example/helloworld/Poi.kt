@@ -9,6 +9,7 @@ data class Poi(
     val website: String?,
     val lat: Double?,
     val lng: Double?,
+    val isOutsideSearchRadius: Boolean = false,
 )
 
 data class Address(

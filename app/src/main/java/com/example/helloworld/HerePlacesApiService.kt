@@ -106,6 +106,16 @@ class HerePlacesApiService(
                     ?.distinct()
                     ?: emptyList()
 
+                val itemLat = item.position?.lat
+                val itemLon = item.position?.lng
+
+                val isOutsideRadius = if ((lat != 0.0 || lon != 0.0) && itemLat != null && itemLon != null) {
+                    val distance = distanceMeters(lat, lon, itemLat, itemLon)
+                    distance > radiusMeters
+                } else {
+                    false
+                }
+
                 Poi(
                     name = title,
                     address = address,
@@ -113,14 +123,32 @@ class HerePlacesApiService(
                     phone = item.contacts?.firstOrNull()?.phone?.firstOrNull()?.value,
                     description = item.categories?.joinToString(", ") { it.name ?: "" } ?: "",
                     website = item.contacts?.firstOrNull()?.www?.firstOrNull()?.value,
-                    lat = item.position?.lat,
-                    lng = item.position?.lng
+                    lat = itemLat,
+                    lng = itemLon,
+                    isOutsideSearchRadius = isOutsideRadius
                 )
             }
         } catch (e: Exception) {
             Log.e("HerePlacesApiService", "Error searching HERE places", e)
             emptyList()
         }
+    }
+
+    private fun distanceMeters(
+        lat1: Double,
+        lon1: Double,
+        lat2: Double,
+        lon2: Double
+    ): Double {
+        val R = 6371000.0 // Earth radius in meters
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(lat1)) *
+                kotlin.math.cos(Math.toRadians(lat2)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        return R * c
     }
 
     override suspend fun autocomplete(query: String): List<String> {
