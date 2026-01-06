@@ -1,3 +1,5 @@
+<img align="left" src="logo.svg" width="100" height="100" alt="CalmDirectory Logo">
+
 # CalmDirectory
 
 **CalmDirectory** is an Android directory application built with Jetpack Compose, optimized for E-ink displays using the **Mudita Mindful Design (MMD)** library. The app provides a minimalist, distraction-free interface for searching points of interest (POIs) such as restaurants, gas stations, hotels, and more.
