@@ -24,6 +24,7 @@ android {
         versionName "1.0"
 
         buildConfigField "String", "HERE_API_KEY", "\"${localProperties.getProperty('HERE_API_KEY', '')}\""
+        buildConfigField "String", "MAPBOX_TOKEN", "\"${localProperties.getProperty('MAPBOX_TOKEN', '')}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -88,6 +89,16 @@ dependencies {
 
     // Phone number formatting
     implementation 'com.googlecode.libphonenumber:libphonenumber:8.13.26'
+
+    // Mapbox Maps SDK and Compose extension
+    implementation 'com.mapbox.maps:android:11.5.0'
+    implementation 'com.mapbox.extension:maps-compose:11.5.0'
+
+    // Mapbox Navigation Core SDK (provides MapboxNavigation, audioGuidance, route requests)
+    implementation 'com.mapbox.navigationcore:navigation:3.5.0'
+    implementation 'com.mapbox.navigationcore:android:3.5.0'
+    // Mapbox Navigation Voice UI (MapboxSpeechApi, MapboxVoiceInstructionsPlayer)
+    implementation 'com.mapbox.navigationcore:ui-voice:3.5.0'
 
 
     testImplementation 'junit:junit'

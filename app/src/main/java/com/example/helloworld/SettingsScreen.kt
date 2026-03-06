@@ -79,7 +79,7 @@ fun SettingsScreen(
         )
     }
     val locationSuggestions by viewModel.locationSuggestions.collectAsState()
-    val mapApp by userPreferencesRepository.mapApp.collectAsState(initial = MapApp.DEFAULT)
+    var mapApp by remember { mutableStateOf<MapApp?>(null) }
     var searchProvider by remember { mutableStateOf<SearchProvider?>(null) }
     val locationSettingsBringIntoViewRequester = remember { BringIntoViewRequester() }
     val suggestionsBringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -102,6 +102,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         searchProvider = userPreferencesRepository.searchProvider.first()
+        mapApp = userPreferencesRepository.mapApp.first()
     }
 
     LaunchedEffect(scrollToLocationSettings) {
@@ -135,6 +136,56 @@ fun SettingsScreen(
             .imePadding()
             .padding(vertical = 16.dp)
     ) {
+        item {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Text(text = "Navigation App", fontSize = 16.sp)
+                Spacer(modifier = Modifier.padding(4.dp))
+
+                listOf(
+                    MapApp.DEFAULT   to "System default",
+                    MapApp.GOOGLE_MAPS to "Google Maps",
+                    MapApp.TOMTOM    to "TomTom",
+                    MapApp.HERE_WEGO to "HERE WeGo",
+                    MapApp.MAPBOX    to "Mapbox (in-app)"
+                ).forEach { (app, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                            .clickable {
+                                mapApp = app
+                                coroutineScope.launch {
+                                    userPreferencesRepository.saveMapApp(app)
+                                    snackbarHostState.showSnackbar("Navigation app set to $label")
+                                }
+                            }
+                    ) {
+                        RadioButtonMMD(
+                            selected = mapApp == app,
+                            onClick = null,
+                            modifier = Modifier.semantics { contentDescription = label }
+                        )
+                        Text(
+                            text = label,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.padding(16.dp))
+
+                HorizontalDividerMMD(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.padding(8.dp))
+        }
+
         item {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(text = "Data Provider", fontSize = 16.sp)

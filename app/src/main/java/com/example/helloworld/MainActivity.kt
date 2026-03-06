@@ -79,15 +79,22 @@ class MainActivity : ComponentActivity() {
                 val apiKey by mainViewModel.apiKey.collectAsState()
                 val focusRequester = remember { FocusRequester() }
 
+                val isNavigationScreen = navBackStackEntry?.destination?.route
+                    ?.startsWith("navigation") == true
+
                 Scaffold(
                     topBar = {
-                        DirectoryTopAppBar(
-                            navController = navController,
-                            navBackStackEntry = navBackStackEntry,
-                            searchViewModel = searchViewModel,
-                            apiKey = apiKey,
-                            focusRequester = focusRequester
-                        )
+                        // Hide the top bar on the active navigation screen so
+                        // the Mapbox map can fill the entire display height.
+                        if (!isNavigationScreen) {
+                            DirectoryTopAppBar(
+                                navController = navController,
+                                navBackStackEntry = navBackStackEntry,
+                                searchViewModel = searchViewModel,
+                                apiKey = apiKey,
+                                focusRequester = focusRequester
+                            )
+                        }
                     }
                 ) { paddingValues ->
                     NavHost(
@@ -96,6 +103,30 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(paddingValues),
                     ) {
                         composable("main") { MainScreen(navController, searchViewModel = searchViewModel) }
+                        composable(
+                            "navigation?lat={lat}&lng={lng}&name={name}",
+                            arguments = listOf(
+                                navArgument("lat") { type = NavType.FloatType },
+                                navArgument("lng") { type = NavType.FloatType },
+                                navArgument("name") {
+                                    type = NavType.StringType
+                                    defaultValue = ""
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val lat = backStackEntry.arguments?.getFloat("lat")?.toDouble() ?: 0.0
+                            val lng = backStackEntry.arguments?.getFloat("lng")?.toDouble() ?: 0.0
+                            val name = URLDecoder.decode(
+                                backStackEntry.arguments?.getString("name") ?: "",
+                                StandardCharsets.UTF_8.toString()
+                            )
+                            ActiveNavigationScreen(
+                                destLat = lat,
+                                destLng = lng,
+                                destName = name,
+                                navController = navController
+                            )
+                        }
                         composable("settings") {
                             val scrollToLocationSettings =
                                 navController.previousBackStackEntry?.savedStateHandle?.get<Boolean>(
@@ -303,6 +334,9 @@ fun DirectoryTopAppBar(
                     }
 
                     "details/{poiName}/{poiAddress}/{poiCountry}/{poiPhone}/{poiDescription}/{poiHours}?poiWebsite={poiWebsite}&lat={lat}&lng={lng}" -> {
+                        val poiName = navBackStackEntry.arguments?.getString("poiName")
+                            ?.let { URLDecoder.decode(it.replace("%2F", "/"), StandardCharsets.UTF_8.toString()) }
+                            ?: ""
                         val poiWebsite = navBackStackEntry.arguments?.getString("poiWebsite")
                         val poiAddress = navBackStackEntry.arguments?.getString("poiAddress")
                         val poiCountry = navBackStackEntry.arguments?.getString("poiCountry")
@@ -340,6 +374,19 @@ fun DirectoryTopAppBar(
                                 poiAddress,
                                 StandardCharsets.UTF_8.toString()
                             )
+
+                            // Mapbox: launch the in-app ActiveNavigationScreen
+                            if (mapApp == MapApp.MAPBOX) {
+                                val encodedName = URLEncoder.encode(
+                                    poiName,
+                                    StandardCharsets.UTF_8.toString()
+                                )
+                                navController.navigate(
+                                    "navigation?lat=$lat&lng=$lng&name=$encodedName"
+                                )
+                                return@IconButton
+                            }
+
                             val clipboard =
                                 context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clip = ClipData.newPlainText("address", decodedAddress)

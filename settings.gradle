@@ -12,6 +12,21 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Mapbox SDK artifacts — requires a secret download token.
+        // Add MAPBOX_DOWNLOADS_TOKEN=sk.xxx... to your ~/.gradle/gradle.properties or
+        // set it as an environment variable before building.
+        maven {
+            url 'https://api.mapbox.com/downloads/v2/releases/maven'
+            authentication {
+                basic(BasicAuthentication)
+            }
+            credentials {
+                username = "mapbox"
+                password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN')
+                    ? project.MAPBOX_DOWNLOADS_TOKEN
+                    : (System.getenv('MAPBOX_DOWNLOADS_TOKEN') ?: '')
+            }
+        }
     }
 }
 

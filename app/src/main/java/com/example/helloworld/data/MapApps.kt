@@ -4,7 +4,8 @@ enum class MapApp {
     DEFAULT,
     GOOGLE_MAPS,
     TOMTOM,
-    HERE_WEGO
+    HERE_WEGO,
+    MAPBOX
 }
 
 enum class SearchProvider {
