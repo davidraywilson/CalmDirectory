@@ -568,6 +568,7 @@ fun ActiveNavigationScreen(
                                 val whiteRes = android.R.color.white
                                 val blackRes = android.R.color.black
                                 val blackStyle = R.style.ManeuverTextAppearance
+                                val whiteStyle = R.style.ManeuverTextAppearance_Overlay
                                 view.updateManeuverViewOptions(
                                     ManeuverViewOptions.Builder()
                                         .maneuverBackgroundColor(whiteRes)
@@ -578,7 +579,7 @@ fun ActiveNavigationScreen(
                                         .laneGuidanceTurnIconManeuver(R.style.LaneGuidanceTurnIconStyle)
                                         .primaryManeuverOptions(ManeuverPrimaryOptions.Builder().textAppearance(blackStyle).build())
                                         .secondaryManeuverOptions(ManeuverSecondaryOptions.Builder().textAppearance(blackStyle).build())
-                                        .subManeuverOptions(ManeuverSubOptions.Builder().textAppearance(blackStyle).build())
+                                        .subManeuverOptions(ManeuverSubOptions.Builder().textAppearance(whiteStyle).build())
                                         .build()
                                 )
                                 view.post { tintManeuverView(view, android.graphics.Color.BLACK) }
@@ -664,13 +665,36 @@ fun ActiveNavigationScreen(
     }
 }
 
-/** Tints all non-LaneGuidance child views of a [MapboxManeuverView] to [color]. */
-private fun tintManeuverView(view: View, color: Int) {
+/** Tints child views of a [MapboxManeuverView] to [color],
+ * but switches to white for anything inside a sub-maneuver container.
+ * [MapboxLaneGuidance] is always skipped to preserve its internal logic. */
+private fun tintManeuverView(view: View, color: Int, isInsideSubManeuver: Boolean = false) {
     if (view is MapboxLaneGuidance) return
+
+    var currentIsSub = isInsideSubManeuver
+    if (!currentIsSub) {
+        val viewName = view.javaClass.simpleName
+        val idName = try {
+            if (view.id != View.NO_ID) view.resources.getResourceEntryName(view.id) else ""
+        } catch (e: Exception) { "" }
+
+        if (viewName.contains("SubManeuver", ignoreCase = true) ||
+            idName.contains("subManeuver", ignoreCase = true)) {
+            currentIsSub = true
+        }
+    }
+
+    val tintColor = if (currentIsSub) android.graphics.Color.WHITE else color
+
     when (view) {
-        is ImageView -> view.setColorFilter(color)
-        is TextView -> view.setTextColor(color)
-        is ViewGroup -> (0 until view.childCount).forEach { tintManeuverView(view.getChildAt(it), color) }
+        is ImageView -> view.setColorFilter(tintColor)
+        is TextView -> view.setTextColor(tintColor)
+    }
+
+    if (view is ViewGroup) {
+        for (i in 0 until view.childCount) {
+            tintManeuverView(view.getChildAt(i), color, currentIsSub)
+        }
     }
 }
 

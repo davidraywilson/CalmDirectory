@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -107,6 +109,10 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             startDestination = "main",
                             modifier = navModifier,
+                            enterTransition = { EnterTransition.None },
+                            exitTransition = { ExitTransition.None },
+                            popEnterTransition = { EnterTransition.None },
+                            popExitTransition = { ExitTransition.None }
                         ) {
                             composable("main") { MainScreen(navController, searchViewModel = searchViewModel) }
                             composable("settings") {
