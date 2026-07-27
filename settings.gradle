@@ -34,7 +34,14 @@ dependencyResolutionManagement {
             }
         }
     }
+    versionCatalogs {
+        libs {
+            from(files("../PaperUI/gradle/libs.versions.toml"))
+        }
+    }
 }
 
-rootProject.name = "CalmMaps"
+rootProject.name = "PaperMaps"
 include ':app'
+include ':paperui'
+project(':paperui').projectDir = new File(settingsDir, '../PaperUI/paperui')

@@ -2,15 +2,16 @@
 buildscript {
     ext {
         compose_ui_version = '1.7.3'
-        kotlin_version = '1.9.22'
+        kotlin_version = '2.0.0'
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0'
+        classpath 'com.android.tools.build:gradle:8.9.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:compose-compiler-gradle-plugin:$kotlin_version"
     }
 }
 

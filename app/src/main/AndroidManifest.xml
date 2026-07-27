@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.calmapps.calmmaps">
+    package="com.paperapps.papermaps">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name="com.example.helloworld.MainApplication"
+        android:name="com.paperapps.papermaps.MainApplication"
         android:allowBackup="true"
         android:usesCleartextTraffic="false"
         android:icon="@drawable/ic_launcher_foreground"
@@ -21,7 +21,7 @@
         android:theme="@style/Theme.HelloWorld">
 
         <service
-            android:name="com.example.helloworld.NavigationOverlayService"
+            android:name="com.paperapps.papermaps.NavigationOverlayService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
@@ -29,15 +29,29 @@
             android:name="com.mapbox.maps.token"
             android:value="@string/mapbox_access_token" />
         <activity
-            android:name="com.example.helloworld.MainActivity"
+            android:name="com.paperapps.papermaps.MainActivity"
             android:exported="true"
-            android:label="CalmMaps"
+            android:label="PaperMaps"
             android:supportsPictureInPicture="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:theme="@style/Theme.HelloWorld">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="maps.google.com" />
             </intent-filter>
         </activity>
     </application>
