@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-**CalmDirectory** (internal name: HelloWorld) is an Android application built with Jetpack Compose that provides a directory/search interface for points of interest (POIs) such as restaurants, gas stations, hotels, etc. The app uses Google Places API for location search and supports both device-based and manual location selection.
+**CalmMaps** (internal name: HelloWorld) is an Android application built with Jetpack Compose that provides a directory/search interface for points of interest (POIs) such as restaurants, gas stations, hotels, etc. The app uses Google Places API for location search and supports both device-based and manual location selection.
 
 ### Tech Stack
 - **Language**: Kotlin 1.9.22
@@ -110,7 +110,7 @@ Navigation logic is centralized in `MainActivity.kt` using `NavHost`.
 
 #### Custom Top Bar
 `DirectoryTopAppBar` in `MainActivity.kt` dynamically changes based on navigation route:
-- Main screen: Shows "Directory" with search and settings icons
+- Main screen: Shows "CalmMaps" with search and settings icons
 - Search screen: Embeds a SearchBar with clear button
 - Details screen: Shows POI name with action icons (website, map, call)
 - Settings screen: Shows "Settings" with back button

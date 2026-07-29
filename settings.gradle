@@ -12,8 +12,32 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
+            authentication {
+                basic(BasicAuthentication)
+            }
+            credentials {
+                username = "mapbox"
+                def envProperties = new Properties()
+                def envFile = file('.env')
+                if (envFile.exists()) {
+                    envFile.withInputStream { envProperties.load(it) }
+                }
+                def localProperties = new Properties()
+                def localPropertiesFile = file('local.properties')
+                if (localPropertiesFile.exists()) {
+                    localPropertiesFile.withInputStream { localProperties.load(it) }
+                }
+                password = envProperties.getProperty("MAPBOX_DOWNLOADS_TOKEN")
+                    ?: localProperties.getProperty("MAPBOX_DOWNLOADS_TOKEN")
+                    ?: providers.gradleProperty("MAPBOX_DOWNLOADS_TOKEN").orNull
+                    ?: System.getenv("MAPBOX_DOWNLOADS_TOKEN")
+                    ?: ""
+            }
+        }
     }
 }
 
-rootProject.name = "CalmDirectory"
+rootProject.name = "CalmMaps"
 include ':app'

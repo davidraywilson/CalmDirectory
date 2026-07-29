@@ -13,12 +13,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -36,6 +32,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,19 +48,15 @@ fun PoiDetailsScreen(
     poiWebsite: String?,
     poiLat: Double?,
     poiLng: Double?,
+    poiSummary: String?,
     navController: NavController
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostStateMMD() }
     val scope = rememberCoroutineScope()
 
-    var phone by remember { mutableStateOf(poiPhone) }
-    var hours by remember { mutableStateOf(poiHours) }
-    val currentBackStackEntry = navController.currentBackStackEntry
-
-    LaunchedEffect(phone) {
-        currentBackStackEntry?.savedStateHandle?.set("effectivePoiPhone", phone)
-    }
+    val phone = poiPhone
+    val hours = poiHours
 
     Scaffold(
         snackbarHost = {
@@ -126,6 +120,11 @@ fun PoiDetailsScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(text = formatPhoneNumberForCountry(phone, poiCountry))
+
+            if (!poiSummary.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(text = poiSummary)
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 

@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.helloworld.data.SearchProvider
 import com.example.helloworld.data.UserPreferencesRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -19,12 +18,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val locationService = LocationService(application)
     private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val googleGeocodingService = GoogleGeocodingService(userPreferencesRepository)
-    private val hereGeocodingService = HereGeocodingService(userPreferencesRepository)
-    private val googleBackend: PlacesBackend = GooglePlacesApiService(application, userPreferencesRepository)
-    private val hereBackend: PlacesBackend = HerePlacesApiService(userPreferencesRepository)
-    @Volatile
-    private var currentBackend: PlacesBackend = googleBackend
+    private val geocodingService = GoogleGeocodingService()
+    private val backend: PlacesBackend = GooglePlacesApiService(application, userPreferencesRepository)
 
     private val _currentLocation = MutableStateFlow("Fetching location...")
     val currentLocation: StateFlow<String> = _currentLocation
@@ -39,15 +34,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     init {
         fetchLocation()
-
-        viewModelScope.launch {
-            userPreferencesRepository.searchProvider.collect { provider ->
-                currentBackend = when (provider) {
-                    SearchProvider.GOOGLE_PLACES -> googleBackend
-                    SearchProvider.HERE -> hereBackend
-                }
-            }
-        }
     }
 
     private fun fetchLocation() {
@@ -62,13 +48,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 ) {
                     val location = locationService.getBestLocationOrNull()
                     if (location != null) {
-                        val provider = userPreferencesRepository.searchProvider.first()
-                        val address = when (provider) {
-                            SearchProvider.GOOGLE_PLACES ->
-                                googleGeocodingService.getAddress(location.latitude, location.longitude)
-                            SearchProvider.HERE ->
-                                hereGeocodingService.getAddress(location.latitude, location.longitude)
-                        }
+                        val address = geocodingService.getAddress(location.latitude, location.longitude)
                         _currentLocation.value = address ?: "Address not found"
                     } else {
                         _currentLocation.value = "Location not available"
@@ -106,7 +86,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
         autocompleteJob = viewModelScope.launch {
             delay(300L)
-            _locationSuggestions.value = currentBackend.autocomplete(query)
+            _locationSuggestions.value = backend.autocomplete(query)
         }
     }
 }

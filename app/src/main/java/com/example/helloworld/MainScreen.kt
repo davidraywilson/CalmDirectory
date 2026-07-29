@@ -1,11 +1,8 @@
 package com.example.helloworld
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,13 +10,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import com.mudita.mmd.components.bottom_sheet.SheetValue
 import androidx.compose.runtime.*
+import kotlinx.coroutines.flow.combine
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.helloworld.data.LocationRepository
@@ -28,6 +25,8 @@ import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
 import com.mudita.mmd.components.bottom_sheet.rememberModalBottomSheetMMDState
 import com.mudita.mmd.components.buttons.ButtonMMD
 import com.mudita.mmd.components.progress_indicator.CircularProgressIndicatorMMD
+import com.mudita.mmd.components.text_field.TextFieldMMD
+import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -35,64 +34,82 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun MainScreen(
     navController: NavController,
-    searchViewModel: SearchViewModel? = null,
     mainViewModel: MainViewModel = viewModel()
 ) {
-    val apiKey by mainViewModel.apiKey.collectAsState()
     val isLoading by mainViewModel.isLoading.collectAsState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     val locationRepository = remember { LocationRepository(context) }
-    val location by locationRepository.location.collectAsState()
     val userPreferencesRepository = remember { UserPreferencesRepository(context) }
-    val useDeviceLocation by userPreferencesRepository.useDeviceLocation.collectAsState(initial = false)
-    val defaultLocation by userPreferencesRepository.defaultLocation.collectAsState(initial = null)
+    val geocodingService = remember { GoogleGeocodingService() }
+
+    val locationGate by remember(userPreferencesRepository) {
+        userPreferencesRepository.useDeviceLocation
+            .combine(userPreferencesRepository.defaultLocation) { device, def ->
+                if (device || !def.isNullOrBlank()) LocationGate.HasLocation
+                else LocationGate.NeedsLocation
+            }
+    }.collectAsState(initial = LocationGate.Unknown)
+
+    val quickLocations by userPreferencesRepository.quickLocations.collectAsState(initial = emptyList())
+
     val bottomSheetState = rememberModalBottomSheetMMDState(
         skipPartiallyExpanded = false,
         confirmValueChange = { it != SheetValue.Hidden }
     )
-    var showLocationBottomSheet by remember { mutableStateOf(false) }
 
-    LaunchedEffect(useDeviceLocation, defaultLocation) {
-        showLocationBottomSheet = !useDeviceLocation && defaultLocation.isNullOrBlank()
+    var showLocationBottomSheet by remember { mutableStateOf(false) }
+    var showNamingBottomSheet by remember { mutableStateOf(false) }
+    var pendingAddress by remember { mutableStateOf("") }
+    var newLocationLabel by remember { mutableStateOf("") }
+
+    LaunchedEffect(locationGate) {
+        showLocationBottomSheet = locationGate == LocationGate.NeedsLocation
     }
 
-    if (isLoading) {
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+    val returnedAddress by savedStateHandle
+        ?.getStateFlow<String?>("selected_address", null)
+        ?.collectAsState() ?: remember { mutableStateOf(null) }
+
+    LaunchedEffect(returnedAddress) {
+        if (!returnedAddress.isNullOrBlank()) {
+            pendingAddress = returnedAddress!!
+            showNamingBottomSheet = true
+            savedStateHandle?.set("selected_address", null)
+        }
+    }
+
+    if (isLoading || locationGate == LocationGate.Unknown) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicatorMMD()
         }
-    } else if (apiKey.isNullOrEmpty()) {
-        NoApiKeyScreen(
-            onSettingsClicked = { navController.navigate("settings") }
-        )
     } else {
         locationRepository.startLocationUpdates()
 
         if (showLocationBottomSheet) {
             ModalBottomSheetMMD(
-                // Outside taps and back press will try to change the sheet state,
-                // but confirmValueChange above prevents it from hiding.
-                onDismissRequest = { /* no-op to keep it persistent */ },
+                onDismissRequest = { },
                 sheetState = bottomSheetState
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 24.dp)
                 ) {
                     Text(
                         text = "Set a Default Location",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
-
                     Text(
                         text = "Before searching, you must set a default location or enable device location.",
                         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
                     )
-
                     ButtonMMD(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
@@ -110,20 +127,65 @@ fun MainScreen(
             }
         }
 
-        Column {
+        if (showNamingBottomSheet) {
+            ModalBottomSheetMMD(
+                onDismissRequest = { showNamingBottomSheet = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Name your location",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.padding(8.dp))
+                    TextFieldMMD(
+                        value = newLocationLabel,
+                        onValueChange = { newLocationLabel = it },
+                        label = { Text("Label (e.g., Gym, Park)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.padding(12.dp))
+                    ButtonMMD(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            scope.launch {
+                                userPreferencesRepository.addQuickLocation(newLocationLabel, pendingAddress)
+                                showNamingBottomSheet = false
+                                newLocationLabel = ""
+                                pendingAddress = ""
+                            }
+                        }
+                    ) {
+                        Text("Save Location")
+                    }
+                }
+            }
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
             LandingScreen(
                 modifier = Modifier,
-                onCategorySelected = { category ->
-                    searchViewModel?.resetSearch()
-                    val encodedCategory =
-                        URLEncoder.encode(category, StandardCharsets.UTF_8.toString())
-                    navController.navigate("search?query=$encodedCategory&autoFocus=false")
+                quickLocations = quickLocations,
+                onAddQuickLocation = {
+                    navController.navigate("search?autoFocus=true&saveAs=NEW_QUICK_LOCATION")
+                },
+                onQuickLocationClicked = { quickLoc ->
+                    scope.launch {
+                        val coords = geocodingService.getCoordinates(quickLoc.address)
+
+                        val lat = coords?.first ?: 0.0
+                        val lng = coords?.second ?: 0.0
+                        val encodedName = URLEncoder.encode(quickLoc.label, StandardCharsets.UTF_8.toString())
+                        val encodedAddress = URLEncoder.encode(quickLoc.address, StandardCharsets.UTF_8.toString())
+
+                        navController.navigate("map?poiName=$encodedName&poiAddress=$encodedAddress&isPlace=false&lat=$lat&lng=$lng")
+                    }
                 }
             )
-            location?.let {
-                Text("Latitude: ${it.latitude}")
-                Text("Longitude: ${it.longitude}")
-            }
         }
     }
 
@@ -134,3 +196,4 @@ fun MainScreen(
     }
 }
 
+private enum class LocationGate { Unknown, NeedsLocation, HasLocation }

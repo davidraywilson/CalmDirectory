@@ -12,18 +12,32 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 
+def envProperties = new Properties()
+def envFile = rootProject.file('.env')
+if (envFile.exists()) {
+    envFile.withInputStream { envProperties.load(it) }
+}
+
+def mapboxAccessToken = envProperties.getProperty('MAPBOX_ACCESS_TOKEN')
+    ?: localProperties.getProperty('MAPBOX_ACCESS_TOKEN')
+    ?: providers.gradleProperty('MAPBOX_ACCESS_TOKEN').orNull
+    ?: System.getenv('MAPBOX_ACCESS_TOKEN')
+    ?: ''
+
 android {
-    namespace 'com.calmapps.directory'
+    namespace 'com.calmapps.calmmaps'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.calmapps.directory"
+        applicationId "com.calmapps.calmmaps"
         minSdk 28
         targetSdk 35
-        versionCode 1
-        versionName "1.0"
+        versionCode 7
+        versionName "2.5"
 
-        buildConfigField "String", "HERE_API_KEY", "\"${localProperties.getProperty('HERE_API_KEY', '')}\""
+        buildConfigField "String", "GOOGLE_PLACES_API_KEY", "\"${envProperties.getProperty('GOOGLE_PLACES_API_KEY', '')}\""
+
+        resValue "string", "mapbox_access_token", mapboxAccessToken
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -31,9 +45,23 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def storeFilePath = localProperties.getProperty('RELEASE_STORE_FILE')
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+                storePassword = localProperties.getProperty('RELEASE_STORE_PASSWORD')
+                keyAlias = localProperties.getProperty('RELEASE_KEY_ALIAS')
+                keyPassword = localProperties.getProperty('RELEASE_KEY_PASSWORD')
+            }
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -60,6 +88,35 @@ android {
 }
 
 dependencies {
+    // Mapbox Maps SDK v11 (NDK27 variant, no Google Play Services via explicit exclusion)
+    implementation('com.mapbox.maps:android-ndk27:11.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+    // Mapbox Maps Compose extension (NDK27)
+    implementation('com.mapbox.extension:maps-compose-ndk27:11.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+    // Mapbox Navigation SDK v3 (NDK27 core)
+    implementation('com.mapbox.navigationcore:android-ndk27:3.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+    // Mapbox Navigation trip data (maneuvers, trip progress, etc.)
+    implementation('com.mapbox.navigationcore:tripdata-ndk27:3.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+    // Mapbox Navigation UI Maps (camera, route lines, location puck, etc.)
+    implementation('com.mapbox.navigationcore:ui-maps-ndk27:3.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+    // Mapbox Navigation UI Components (maneuver view, trip progress, etc.)
+    implementation('com.mapbox.navigationcore:ui-components-ndk27:3.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+    // Mapbox Navigation Voice (voice instructions, TTS)
+    implementation('com.mapbox.navigationcore:voice-ndk27:3.18.0') {
+        exclude group: 'com.google.android.gms'
+    }
+
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.3'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3'
@@ -70,10 +127,10 @@ dependencies {
     implementation "androidx.compose.material:material-icons-extended:${rootProject.ext.compose_ui_version}"
     implementation 'androidx.compose.material3:material3:1.3.1'
     implementation 'com.google.android.material:material:1.11.0'
-    implementation 'com.mudita:MMD:1.0.0'
-    implementation "androidx.navigation:navigation-compose:2.7.7"
     implementation 'com.google.android.libraries.places:places:3.5.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
+    implementation 'com.mudita:MMD:1.0.0'
+    implementation "androidx.navigation:navigation-compose:2.7.7"
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
@@ -90,7 +147,7 @@ dependencies {
     implementation 'com.googlecode.libphonenumber:libphonenumber:8.13.26'
 
 
-    testImplementation 'junit:junit'
+    testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:${rootProject.ext.compose_ui_version}"

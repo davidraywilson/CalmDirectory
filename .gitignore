@@ -58,6 +58,9 @@ captures/
 *.jks
 *.keystore
 
+# Environment variables
+.env
+
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
 .cxx/
@@ -101,4 +104,4 @@ lint/tmp/
 
 # Sensitive or personal data
 # Add any files containing API keys or secrets here
-# For this project, users will enter API keys in-app, so no secrets in source
+app/src/main/res/values/api_keys.xml

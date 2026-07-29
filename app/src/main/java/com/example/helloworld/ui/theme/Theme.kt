@@ -12,7 +12,7 @@ import com.mudita.mmd.eInkColorScheme
 import com.mudita.mmd.eInkTypography
 
 /**
- * CalmDirectory application theme using Mudita Mindful Design (MMD) principles
+ * CalmMaps application theme using Mudita Mindful Design (MMD) principles
  * optimized for E Ink displays.
  *
  * This theme:
@@ -23,7 +23,7 @@ import com.mudita.mmd.eInkTypography
  * - Increases contrast for better E Ink readability
  */
 @Composable
-fun CalmDirectoryTheme(
+fun CalmMapsTheme(
     content: @Composable () -> Unit
 ) {
     // Apply MMD theme with E Ink optimizations
