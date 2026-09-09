@@ -43,8 +43,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(
                 userPreferencesRepository.useDeviceLocation,
-                userPreferencesRepository.defaultLocation
-            ) { _, _ -> }.collect {
+                userPreferencesRepository.defaultLocation,
+                userPreferencesRepository.searchRadius
+            ) { _, _, _ -> }.collect {
                 invalidateLocation()
             }
         }
@@ -128,6 +129,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun invalidateLocation() {
         cachedLocation = null
         locationDeferred = null
+        _categoryResults.value = emptyMap()
+        _categoryLoading.value = emptyMap()
         prefetchLocation()
     }
 

@@ -581,67 +581,6 @@ fun NavigationScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
 
-                    if (screenState == ScreenState.ROUTE_PREVIEW) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 16.dp, end = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                val isDriving = transportMode == DirectionsCriteria.PROFILE_DRIVING_TRAFFIC
-                                IconButton(
-                                    onClick = { transportMode = DirectionsCriteria.PROFILE_DRIVING_TRAFFIC; fetchRoute() },
-                                    modifier = Modifier.size(40.dp)
-                                        .background(if (isDriving) MaterialTheme.colorScheme.onSurface else ComposeColor.Transparent, CircleShape)
-                                        .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                ) {
-                                    Icon(Icons.Outlined.DirectionsCar, "Driving",
-                                        tint = if (isDriving) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(22.dp))
-                                }
-                                val isCycling = transportMode == DirectionsCriteria.PROFILE_CYCLING
-                                IconButton(
-                                    onClick = { transportMode = DirectionsCriteria.PROFILE_CYCLING; fetchRoute() },
-                                    modifier = Modifier.size(40.dp)
-                                        .background(if (isCycling) MaterialTheme.colorScheme.onSurface else ComposeColor.Transparent, CircleShape)
-                                        .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                ) {
-                                    Icon(Icons.Outlined.DirectionsBike, "Cycling",
-                                        tint = if (isCycling) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(22.dp))
-                                }
-                                val isWalking = transportMode == DirectionsCriteria.PROFILE_WALKING
-                                IconButton(
-                                    onClick = { transportMode = DirectionsCriteria.PROFILE_WALKING; fetchRoute() },
-                                    modifier = Modifier.size(40.dp)
-                                        .background(if (isWalking) MaterialTheme.colorScheme.onSurface else ComposeColor.Transparent, CircleShape)
-                                        .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                ) {
-                                    Icon(Icons.Outlined.DirectionsWalk, "Walking",
-                                        tint = if (isWalking) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(22.dp))
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-                            if (routeDurationSeconds > 0 && !isLoading) {
-                                val totalSec = routeDurationSeconds.toLong()
-                                val hours = TimeUnit.SECONDS.toHours(totalSec)
-                                val minutes = TimeUnit.SECONDS.toMinutes(totalSec) % 60
-                                val durationLabel = buildString {
-                                    if (hours > 0) append("$hours hr ")
-                                    append("$minutes min")
-                                }
-                                val cal = Calendar.getInstance().also { it.add(Calendar.SECOND, totalSec.toInt()) }
-                                val etaLabel = SimpleDateFormat("h:mm a", Locale.getDefault()).format(cal.time)
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(durationLabel, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                    Text(etaLabel, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
-
                     if (errorMessage != null) {
                         Text(errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
                     }
@@ -660,21 +599,86 @@ fun NavigationScreen(
             }
             val actionIcon = if (isLoading) Icons.Outlined.LocationSearching else Icons.Outlined.Directions
 
-            ApplicationBar(
-                actions = listOf(
-                    AppbarAction(
-                        icon = actionIcon,
-                        label = actionLabel,
-                        onClick = {
-                            if (isActionEnabled) {
-                                when (screenState) {
-                                    ScreenState.POI_OVERVIEW -> requestLocationAndDo { fetchRoute() }
-                                    ScreenState.ROUTE_PREVIEW -> if (canNavigate) requestNavigationStart()
-                                }
-                            }
+            val appbarActions = mutableListOf<com.paperapps.paperui.components.AppbarAction>()
+
+            appbarActions.add(com.paperapps.paperui.components.AppbarAction(
+                icon = actionIcon,
+                label = actionLabel,
+                onClick = {
+                    if (isActionEnabled) {
+                        when (screenState) {
+                            ScreenState.POI_OVERVIEW -> requestLocationAndDo { fetchRoute() }
+                            ScreenState.ROUTE_PREVIEW -> if (canNavigate) requestNavigationStart()
                         }
-                    )
-                )
+                    }
+                }
+            ))
+
+            if (screenState == ScreenState.ROUTE_PREVIEW) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isDriving = transportMode == DirectionsCriteria.PROFILE_DRIVING_TRAFFIC
+                    IconButton(
+                        onClick = { transportMode = DirectionsCriteria.PROFILE_DRIVING_TRAFFIC; fetchRoute() },
+                        modifier = Modifier.size(40.dp)
+                            .background(if (isDriving) MaterialTheme.colorScheme.onSurface else ComposeColor.Transparent, CircleShape)
+                            .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    ) {
+                        Icon(Icons.Outlined.DirectionsCar, "Driving",
+                            tint = if (isDriving) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    val isCycling = transportMode == DirectionsCriteria.PROFILE_CYCLING
+                    IconButton(
+                        onClick = { transportMode = DirectionsCriteria.PROFILE_CYCLING; fetchRoute() },
+                        modifier = Modifier.size(40.dp)
+                            .background(if (isCycling) MaterialTheme.colorScheme.onSurface else ComposeColor.Transparent, CircleShape)
+                            .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    ) {
+                        Icon(Icons.Outlined.DirectionsBike, "Cycling",
+                            tint = if (isCycling) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    val isWalking = transportMode == DirectionsCriteria.PROFILE_WALKING
+                    IconButton(
+                        onClick = { transportMode = DirectionsCriteria.PROFILE_WALKING; fetchRoute() },
+                        modifier = Modifier.size(40.dp)
+                            .background(if (isWalking) MaterialTheme.colorScheme.onSurface else ComposeColor.Transparent, CircleShape)
+                            .border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                    ) {
+                        Icon(Icons.Outlined.DirectionsWalk, "Walking",
+                            tint = if (isWalking) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(22.dp))
+                    }
+                }
+            }
+
+            ApplicationBar(
+                actions = appbarActions,
+                leftSlot = {
+                    if (screenState == ScreenState.ROUTE_PREVIEW && routeDurationSeconds > 0 && !isLoading) {
+                        val totalSec = routeDurationSeconds.toLong()
+                        val hours = java.util.concurrent.TimeUnit.SECONDS.toHours(totalSec)
+                        val minutes = java.util.concurrent.TimeUnit.SECONDS.toMinutes(totalSec) % 60
+                        val durationLabel = buildString {
+                            if (hours > 0) append("$hours hr ")
+                            append("$minutes min")
+                        }
+                        val cal = java.util.Calendar.getInstance().also { it.add(java.util.Calendar.SECOND, totalSec.toInt()) }
+                        val etaLabel = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(cal.time)
+                        Column {
+                            Text(durationLabel, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(etaLabel, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
             )
         }
     }

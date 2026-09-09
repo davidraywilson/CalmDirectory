@@ -21,8 +21,8 @@ android {
         applicationId "com.paperapps.papermaps"
         minSdk 28
         targetSdk 36
-        versionCode 22
-        versionName "2.20"
+        versionCode 26
+        versionName "2.26"
 
         buildConfigField "String", "HERE_API_KEY", "\"${localProperties.getProperty('HERE_API_KEY', '')}\""
         buildConfigField "String", "GOOGLE_PLACES_API_KEY", "\"${localProperties.getProperty('GOOGLE_PLACES_API_KEY', '')}\""
