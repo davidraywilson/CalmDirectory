@@ -29,6 +29,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.foundation.pager.rememberPagerState
+import com.paperapps.paperui.components.PanoramaHeader
+import com.paperapps.paperui.components.PanoramaPager
+import com.paperapps.paperui.components.ApplicationBar
+import com.paperapps.paperui.components.AppbarAction
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,7 +59,6 @@ import com.paperapps.papermaps.data.DistanceUnit
 import com.paperapps.papermaps.data.UserPreferencesRepository
 import com.mudita.mmd.components.bottom_sheet.ModalBottomSheetMMD
 import com.mudita.mmd.components.buttons.ButtonMMD
-import com.mudita.mmd.components.divider.HorizontalDividerMMD
 
 import com.mudita.mmd.components.radio_button.RadioButtonMMD
 import com.mudita.mmd.components.search_bar.SearchBarDefaultsMMD
@@ -77,6 +82,7 @@ fun SettingsScreen(
     val userPreferencesRepository = remember { UserPreferencesRepository(context) }
     val offlineManager = remember { OfflineMapManager(context) }
     val currentLocation by viewModel.currentLocation.collectAsState()
+    val isRefreshingLocation by viewModel.isRefreshingLocation.collectAsState()
     val useDeviceLocation by viewModel.useDeviceLocation.collectAsState(initial = true)
     val defaultLocation by viewModel.defaultLocation.collectAsState(initial = "")
     var newDefaultLocation by remember(defaultLocation) { mutableStateOf(defaultLocation ?: "") }
@@ -98,8 +104,8 @@ fun SettingsScreen(
     val locationSettingsBringIntoViewRequester = remember { BringIntoViewRequester() }
     val suggestionsBringIntoViewRequester = remember { BringIntoViewRequester() }
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Search", "Maps")
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
 
     val requestLocationPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -117,8 +123,8 @@ fun SettingsScreen(
             }
         }
 
-    LaunchedEffect(selectedTabIndex, refreshRegionsTrigger) {
-        if (selectedTabIndex == 1) {
+    LaunchedEffect(pagerState.currentPage, refreshRegionsTrigger) {
+        if (pagerState.currentPage == 1) {
             offlineManager.getOfflineRegions().collect { regions ->
                 offlineRegions = regions
             }
@@ -126,7 +132,7 @@ fun SettingsScreen(
     }
     LaunchedEffect(scrollToLocationSettings) {
         if (scrollToLocationSettings) {
-            selectedTabIndex = 0
+            pagerState.scrollToPage(0)
             locationSettingsBringIntoViewRequester.bringIntoView()
             navController.previousBackStackEntry?.savedStateHandle?.set("scrollToLocationSettings", false)
         }
@@ -148,7 +154,7 @@ fun SettingsScreen(
 
     LaunchedEffect(selectedAddress) {
         if (selectedAddress != null && selectedLabel != null) {
-            selectedTabIndex = 1
+            pagerState.scrollToPage(1)
             quickLocationName = ""
             pendingQuickLocationAddress = selectedAddress!!
             showQuickLocationNameDialog = true
@@ -158,27 +164,21 @@ fun SettingsScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            PrimaryTabRowMMD(
-                selectedTabIndex = selectedTabIndex
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                title,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
-                }
-            }
+Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            PanoramaHeader(
+                pagerState = pagerState,
+                titles = tabs,
+                coroutineScope = coroutineScope,
+                screenTitle = "Settings"
+            )
 
-            when (selectedTabIndex) {
-                0 -> {
-                    PaperLazyColumn(modifier = Modifier.fillMaxSize().weight(1f).padding(end = 16.dp)) {
+            PanoramaPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { page ->
+                if (page == 0) {
+
+                    PaperLazyColumn(modifier = Modifier.fillMaxSize().padding(end = 16.dp)) {
                         item { Spacer(modifier = Modifier.height(16.dp)) }
 
                         item {
@@ -208,7 +208,6 @@ fun SettingsScreen(
                                         .padding(vertical = 8.dp)
                                 )
                                 Spacer(modifier = Modifier.padding(8.dp))
-                                HorizontalDividerMMD(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             }
                         }
 
@@ -311,18 +310,24 @@ fun SettingsScreen(
                         } else {
                             item {
                                 Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(text = "Current Location:", fontSize = 16.sp)
+                                    Text(text = "Current Location:", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.padding(4.dp))
                                     Text(text = currentLocation, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.padding(8.dp))
+                                    ButtonMMD(
+                                        onClick = { viewModel.refreshLocation() },
+                                        enabled = !isRefreshingLocation
+                                    ) {
+                                        Text(if (isRefreshingLocation) "Refreshing..." else "Refresh Location")
+                                    }
                                 }
                             }
                         }
                         item { Spacer(modifier = Modifier.height(48.dp)) }
                     }
                 }
-
-                1 -> {
-                    PaperLazyColumn(modifier = Modifier.fillMaxSize().weight(1f).padding(end = 16.dp)) {
+                else if (page == 1) {
+                    PaperLazyColumn(modifier = Modifier.fillMaxSize().padding(end = 16.dp)) {
                         item { Spacer(modifier = Modifier.height(16.dp)) }
 
                         item {
@@ -368,7 +373,6 @@ fun SettingsScreen(
                                 }
 
                                 Spacer(modifier = Modifier.padding(16.dp))
-                                HorizontalDividerMMD(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             }
                         }
 
@@ -407,7 +411,6 @@ fun SettingsScreen(
                                 }
 
                                 Spacer(modifier = Modifier.padding(16.dp))
-                                HorizontalDividerMMD(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             }
                         }
 
@@ -463,6 +466,16 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            val actions = mutableListOf<AppbarAction>()
+            actions.add(
+                AppbarAction(
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    label = "Back",
+                    onClick = { navController.popBackStack() }
+                )
+            )
+            ApplicationBar(actions = actions)
         }
 
         SnackbarHostMMD(

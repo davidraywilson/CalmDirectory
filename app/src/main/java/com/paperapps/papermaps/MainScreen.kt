@@ -1,5 +1,6 @@
 package com.paperapps.papermaps
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -24,6 +26,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.paperapps.papermaps.data.LocationRepository
@@ -61,6 +66,32 @@ fun MainScreen(
     val useDeviceLocation by userPreferencesRepository.useDeviceLocation.collectAsState(initial = false)
     val defaultLocation by userPreferencesRepository.defaultLocation.collectAsState(initial = null)
     val quickLocations by userPreferencesRepository.quickLocations.collectAsState(initial = emptyList())
+
+    val isRefreshingLocation by mainViewModel.isRefreshingLocation.collectAsState()
+    val locationVersion by mainViewModel.locationVersion.collectAsState()
+
+    // Refresh location when the app returns to the foreground.
+    // We gate on ON_PAUSE having fired first — since the observer is registered after the
+    // Activity is already resumed, the very first ON_RESUME fires before we're attached and
+    // would incorrectly trigger a refresh on every recomposition without this guard.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasBeenPaused by remember { mutableStateOf(false) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> hasBeenPaused = true
+                Lifecycle.Event.ON_RESUME -> {
+                    if (hasBeenPaused) {
+                        hasBeenPaused = false
+                        mainViewModel.refreshOnForeground()
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val bottomSheetState = rememberModalBottomSheetMMDState(
         skipPartiallyExpanded = false,
@@ -251,7 +282,7 @@ fun MainScreen(
                         }
                     )
                 } else {
-                    LaunchedEffect(title, currentSortOption) {
+                    LaunchedEffect(title, currentSortOption, locationVersion) {
                         mainViewModel.fetchCategory(title)
                     }
                     val results = categoryResults[title] ?: emptyList()
@@ -313,6 +344,9 @@ fun MainScreen(
                 )
             )
 
+            AnimatedVisibility(visible = isRefreshingLocation) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
             ApplicationBar(actions = actions)
         }
     }

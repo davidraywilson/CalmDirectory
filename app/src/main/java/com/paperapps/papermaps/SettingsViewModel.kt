@@ -24,6 +24,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _currentLocation = MutableStateFlow("Fetching location...")
     val currentLocation: StateFlow<String> = _currentLocation
 
+    private val _isRefreshingLocation = MutableStateFlow(false)
+    val isRefreshingLocation: StateFlow<Boolean> = _isRefreshingLocation
+
     private val _locationSuggestions = MutableStateFlow<List<String>>(emptyList())
     val locationSuggestions: StateFlow<List<String>> = _locationSuggestions
 
@@ -33,28 +36,33 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val defaultLocation = userPreferencesRepository.defaultLocation
 
     init {
-        fetchLocation()
+        refreshLocation()
     }
 
-    private fun fetchLocation() {
+    fun refreshLocation() {
         viewModelScope.launch {
             if (userPreferencesRepository.useDeviceLocation.first()) {
                 _currentLocation.value = "Fetching location..."
+                _isRefreshingLocation.value = true
 
-                if (ContextCompat.checkSelfPermission(
-                        getApplication(),
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    val location = locationService.getBestLocationOrNull()
-                    if (location != null) {
-                        val address = geocodingService.getAddress(location.latitude, location.longitude)
-                        _currentLocation.value = address ?: "Address not found"
+                try {
+                    if (ContextCompat.checkSelfPermission(
+                            getApplication(),
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        val location = locationService.getBestLocationOrNull()
+                        if (location != null) {
+                            val address = geocodingService.getAddress(location.latitude, location.longitude)
+                            _currentLocation.value = address ?: "Address not found"
+                        } else {
+                            _currentLocation.value = "Location not available"
+                        }
                     } else {
-                        _currentLocation.value = "Location not available"
+                        _currentLocation.value = "Location permission not granted"
                     }
-                } else {
-                    _currentLocation.value = "Location permission not granted"
+                } finally {
+                    _isRefreshingLocation.value = false
                 }
             } else {
                 _currentLocation.value = userPreferencesRepository.defaultLocation.first() ?: "No default location set"
@@ -65,7 +73,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setUseDeviceLocation(useDeviceLocation: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.saveUseDeviceLocation(useDeviceLocation)
-            fetchLocation()
+            refreshLocation()
         }
     }
 

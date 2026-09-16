@@ -34,6 +34,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _categoryLoading = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val categoryLoading: StateFlow<Map<String, Boolean>> = _categoryLoading.asStateFlow()
 
+    /** True while a foreground-triggered location refresh is in progress. */
+    private val _isRefreshingLocation = MutableStateFlow(false)
+    val isRefreshingLocation: StateFlow<Boolean> = _isRefreshingLocation.asStateFlow()
+
+    /** Incremented whenever location changes so the UI can re-key LaunchedEffects
+     *  and trigger a fresh category fetch. */
+    private val _locationVersion = MutableStateFlow(0)
+    val locationVersion: StateFlow<Int> = _locationVersion.asStateFlow()
+
     private var cachedLocation: Pair<Double, Double>? = null
     private var locationDeferred: kotlinx.coroutines.Deferred<Pair<Double, Double>>? = null
 
@@ -55,6 +64,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_sortOption.value != option) {
             _sortOption.value = option
             _categoryResults.value = emptyMap() // Clear cache to trigger re-fetch
+        }
+    }
+
+    /**
+     * Called when the app returns to the foreground. Refreshes the device location
+     * and clears the category cache only if the user has enabled device location.
+     * Sets [isRefreshingLocation] to true for the duration so the UI can show an
+     * indicator in the app bar.
+     */
+    fun refreshOnForeground() {
+        viewModelScope.launch {
+            val useDeviceLocation = userPreferencesRepository.useDeviceLocation.first()
+            if (!useDeviceLocation) return@launch
+
+            _isRefreshingLocation.value = true
+            try {
+                // Clear stale cache so a fresh location is fetched below
+                cachedLocation = null
+                locationDeferred = null
+                _categoryResults.value = emptyMap()
+                _categoryLoading.value = emptyMap()
+
+                // Fetch a fresh location fix
+                val deviceLocation = locationService.getBestLocationOrNull()
+                val lat = deviceLocation?.latitude
+                val lon = deviceLocation?.longitude
+
+                cachedLocation = if (lat != null && lon != null && !(lat == 0.0 && lon == 0.0)) {
+                    lat to lon
+                } else {
+                    // Fall back to the user's saved default location
+                    val defaultLocation = userPreferencesRepository.defaultLocation.first()
+                    if (!defaultLocation.isNullOrBlank()) {
+                        geocodingService.getCoordinates(defaultLocation) ?: (0.0 to 0.0)
+                    } else {
+                        0.0 to 0.0
+                    }
+                }
+
+                // Bump the version so UI LaunchedEffects re-fire and categories reload
+                _locationVersion.value += 1
+            } finally {
+                _isRefreshingLocation.value = false
+            }
         }
     }
 
@@ -131,6 +184,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationDeferred = null
         _categoryResults.value = emptyMap()
         _categoryLoading.value = emptyMap()
+        // Bump version so any active UI LaunchedEffects re-fire and reload categories
+        _locationVersion.value += 1
         prefetchLocation()
     }
 
